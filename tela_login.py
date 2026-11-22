@@ -27,10 +27,10 @@ class TelaLogin(tk.Tk):
         style = ttk.Style()
         style.theme_use("clam")
         style.configure("TFrame", background=TEMA["fundo"])
-        style.configure("TLabel", background=TEMA["fundo"], foreground=TEMA["texto"], font=("Segoe UI", 10))
-        style.configure("Muted.TLabel", background=TEMA["fundo"], foreground=TEMA["muted"], font=("Segoe UI", 9))
-        style.configure("Titulo.TLabel", background=TEMA["fundo"], foreground=TEMA["texto"], font=("Segoe UI", 16, "bold"))
-        style.configure("Erro.TLabel", background=TEMA["fundo"], foreground="#c96b5c", font=("Segoe UI", 9))
+        style.configure("TLabel", background=TEMA["fundo"], foreground=TEMA["texto"], font=("Segoe UI Semibold", 10))
+        style.configure("Muted.TLabel", background=TEMA["fundo"], foreground=TEMA["muted"], font=("Segoe UI Semibold", 9))
+        style.configure("Titulo.TLabel", background=TEMA["fundo"], foreground=TEMA["texto"], font=("Segoe UI Semibold", 16, "bold"))
+        style.configure("Erro.TLabel", background=TEMA["fundo"], foreground="#c96b5c", font=("Segoe UI Semibold", 9))
 
     def _montar_layout(self):
         self.container = ttk.Frame(self, padding=28)
@@ -44,7 +44,7 @@ class TelaLogin(tk.Tk):
     def _campo(self, label_texto, mostrar=None):
         ttk.Label(self.container, text=label_texto, style="Muted.TLabel").pack(anchor="w", pady=(10, 4))
         entrada = tk.Entry(
-            self.container, font=("Segoe UI", 11), bg=TEMA["painel"], fg=TEMA["texto"],
+            self.container, font=("Segoe UI Semibold", 11), bg=TEMA["painel"], fg=TEMA["texto"],
             insertbackground=TEMA["texto"], relief="flat", show=mostrar or ""
         )
         entrada.pack(fill="x", ipady=7)
@@ -69,13 +69,13 @@ class TelaLogin(tk.Tk):
         self.lbl_erro.pack(anchor="w", pady=(8, 0))
 
         tk.Button(
-            self.container, text="Entrar", font=("Segoe UI", 11, "bold"),
+            self.container, text="Entrar", font=("Segoe UI Semibold", 11, "bold"),
             bg=TEMA["cobre"], fg="#1a1300", relief="flat", padx=10, pady=10,
             command=self._tentar_login
         ).pack(fill="x", pady=(16, 6))
 
         tk.Button(
-            self.container, text="Criar conta da empresa", font=("Segoe UI", 9),
+            self.container, text="Criar conta da empresa", font=("Segoe UI Semibold", 9),
             bg=TEMA["fundo"], fg=TEMA["muted"], relief="flat", padx=6, pady=6,
             command=self._ir_para_cadastro
         ).pack(fill="x")
@@ -112,13 +112,13 @@ class TelaLogin(tk.Tk):
         self.lbl_erro.pack(anchor="w", pady=(8, 0))
 
         tk.Button(
-            self.container, text="Criar conta", font=("Segoe UI", 11, "bold"),
+            self.container, text="Criar conta", font=("Segoe UI Semibold", 11, "bold"),
             bg=TEMA["total"], fg="#122016", relief="flat", padx=10, pady=10,
             command=self._tentar_cadastrar
         ).pack(fill="x", pady=(16, 6))
 
         tk.Button(
-            self.container, text="Já tenho conta — Entrar", font=("Segoe UI", 9),
+            self.container, text="Já tenho conta — Entrar", font=("Segoe UI Semibold", 9),
             bg=TEMA["fundo"], fg=TEMA["muted"], relief="flat", padx=6, pady=6,
             command=self._ir_para_login
         ).pack(fill="x")
