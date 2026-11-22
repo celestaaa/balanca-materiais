@@ -3,7 +3,8 @@
 import tkinter as tk
 from tkinter import ttk
 
-from materiais import TEMA
+from estilo import TEMA, FONTE
+from widgets import BotaoArredondado, EntradaArredondada, CabecalhoDegrade
 from autenticacao import GerenciadorUsuarios
 
 
@@ -17,7 +18,7 @@ class TelaLogin(tk.Tk):
 
         self.title("Balança de Materiais — Acesso")
         self.configure(bg=TEMA["fundo"])
-        self.geometry("380x600")
+        self.geometry("400x560")
         self.resizable(False, False)
 
         self._montar_estilo()
@@ -27,24 +28,18 @@ class TelaLogin(tk.Tk):
         style = ttk.Style()
         style.theme_use("clam")
         style.configure("TFrame", background=TEMA["fundo"])
-        style.configure("TLabel", background=TEMA["fundo"], foreground=TEMA["texto"], font=("Segoe UI Semibold", 10))
-        style.configure("Muted.TLabel", background=TEMA["fundo"], foreground=TEMA["muted"], font=("Segoe UI Semibold", 9))
-        style.configure("Titulo.TLabel", background=TEMA["fundo"], foreground=TEMA["texto"], font=("Segoe UI Semibold", 16, "bold"))
-        style.configure("Erro.TLabel", background=TEMA["fundo"], foreground=TEMA["erro"], font=("Segoe UI Semibold", 9))
+        style.configure("TLabel", background=TEMA["fundo"], foreground=TEMA["texto"], font=(FONTE, 10))
+        style.configure("Muted.TLabel", background=TEMA["fundo"], foreground=TEMA["muted"], font=(FONTE, 9))
+        style.configure("Titulo.TLabel", background=TEMA["fundo"], foreground=TEMA["texto"], font=(FONTE, 16, "bold"))
+        style.configure("Erro.TLabel", background=TEMA["fundo"], foreground=TEMA["erro"], font=(FONTE, 9))
 
     def _montar_layout(self):
-        faixa = tk.Frame(self, bg=TEMA["cabecalho"])
-        faixa.pack(fill="x")
-        tk.Label(
-            faixa, text="Balança de Materiais", bg=TEMA["cabecalho"], fg=TEMA["sobre_destaque"],
-            font=("Segoe UI Semibold", 17, "bold")
-        ).pack(anchor="w", padx=28, pady=(24, 2))
-        tk.Label(
-            faixa, text="Pesagem e cotação de materiais", bg=TEMA["cabecalho"], fg=TEMA["cabecalho_sub"],
-            font=("Segoe UI Semibold", 9)
-        ).pack(anchor="w", padx=28, pady=(0, 20))
+        CabecalhoDegrade(
+            self, "Balança de Materiais", "Pesagem e cotação de materiais",
+            fundo_pai=TEMA["fundo"], altura=88
+        ).pack(fill="x", padx=14, pady=(14, 0))
 
-        self.container = ttk.Frame(self, padding=28)
+        self.container = ttk.Frame(self, padding=(30, 22, 30, 22))
         self.container.pack(fill="both", expand=True)
         self._renderizar()
 
@@ -54,21 +49,34 @@ class TelaLogin(tk.Tk):
 
     def _campo(self, label_texto, mostrar=None):
         ttk.Label(self.container, text=label_texto, style="Muted.TLabel").pack(anchor="w", pady=(10, 4))
-        entrada = tk.Entry(
-            self.container, font=("Segoe UI Semibold", 11), bg=TEMA["painel"], fg=TEMA["texto"],
-            insertbackground=TEMA["texto"], relief="flat", show=mostrar or ""
+        campo = EntradaArredondada(
+            self.container, fundo_pai=TEMA["fundo"], bg=TEMA["painel"], font=(FONTE, 11),
+            raio=999, show=mostrar or "", pady=9
         )
-        entrada.pack(fill="x", ipady=7)
-        return entrada
+        campo.pack(fill="x")
+        return campo.entry
+
+    def _botao_principal(self, texto, comando, cor):
+        return BotaoArredondado(
+            self.container, text=texto, command=comando, bg=cor, fg=TEMA["sobre_destaque"],
+            hover=TEMA["destaque_hover"], fundo_pai=TEMA["fundo"], raio=999,
+            font=(FONTE, 11, "bold"), pady=12
+        )
+
+    def _botao_secundario(self, texto, comando):
+        return BotaoArredondado(
+            self.container, text=texto, command=comando, bg=TEMA["painel"], fg=TEMA["muted"],
+            borda=TEMA["linha"], fundo_pai=TEMA["fundo"], raio=999, font=(FONTE, 9), pady=9
+        )
 
     # ---------- Modo login ----------
     def _renderizar(self):
         self._limpar_container()
         if self.modo == "login":
-            self.geometry("380x520")
+            self.geometry("400x560")
             self._renderizar_login()
         else:
-            self.geometry("380x690")
+            self.geometry("400x720")
             self._renderizar_cadastro()
 
     def _renderizar_login(self):
@@ -79,19 +87,10 @@ class TelaLogin(tk.Tk):
         self.entry_senha = self._campo("Senha", mostrar="*")
 
         self.lbl_erro = ttk.Label(self.container, text="", style="Erro.TLabel")
-        self.lbl_erro.pack(anchor="w", pady=(8, 0))
+        self.lbl_erro.pack(anchor="w", pady=(10, 0))
 
-        tk.Button(
-            self.container, text="Entrar", font=("Segoe UI Semibold", 11, "bold"),
-            bg=TEMA["destaque"], fg=TEMA["sobre_destaque"], relief="flat", padx=10, pady=10,
-            command=self._tentar_login
-        ).pack(fill="x", pady=(16, 6))
-
-        tk.Button(
-            self.container, text="Criar conta da empresa", font=("Segoe UI Semibold", 9),
-            bg=TEMA["fundo"], fg=TEMA["muted"], relief="flat", padx=6, pady=6,
-            command=self._ir_para_cadastro
-        ).pack(fill="x")
+        self._botao_principal("Entrar", self._tentar_login, TEMA["destaque"]).pack(fill="x", pady=(14, 8))
+        self._botao_secundario("Criar conta da empresa", self._ir_para_cadastro).pack(fill="x")
 
         self.entry_usuario.focus_set()
         self.bind("<Return>", lambda e: self._tentar_login())
@@ -122,19 +121,10 @@ class TelaLogin(tk.Tk):
         self.entry_confirmar_senha = self._campo("Confirmar senha", mostrar="*")
 
         self.lbl_erro = ttk.Label(self.container, text="", style="Erro.TLabel")
-        self.lbl_erro.pack(anchor="w", pady=(8, 0))
+        self.lbl_erro.pack(anchor="w", pady=(10, 0))
 
-        tk.Button(
-            self.container, text="Criar conta", font=("Segoe UI Semibold", 11, "bold"),
-            bg=TEMA["total"], fg=TEMA["sobre_destaque"], relief="flat", padx=10, pady=10,
-            command=self._tentar_cadastrar
-        ).pack(fill="x", pady=(16, 6))
-
-        tk.Button(
-            self.container, text="Já tenho conta — Entrar", font=("Segoe UI Semibold", 9),
-            bg=TEMA["fundo"], fg=TEMA["muted"], relief="flat", padx=6, pady=6,
-            command=self._ir_para_login
-        ).pack(fill="x")
+        self._botao_principal("Criar conta", self._tentar_cadastrar, TEMA["total"]).pack(fill="x", pady=(14, 8))
+        self._botao_secundario("Já tenho conta — Entrar", self._ir_para_login).pack(fill="x")
 
         self.bind("<Return>", lambda e: self._tentar_cadastrar())
 

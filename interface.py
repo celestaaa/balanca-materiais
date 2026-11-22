@@ -1,14 +1,36 @@
-"""Interface Tkinter da Balança de Materiais, organizada em abas."""
+"""Interface Tkinter da Balança de Materiais: visual moderno, organizada em abas."""
 
 import tkinter as tk
 from datetime import datetime
 from tkinter import ttk, messagebox
 
-from materiais import MATERIAIS, TEMA
+from materiais import MATERIAIS
+from estilo import TEMA, FONTE, FONTE_MONO
+from widgets import BotaoArredondado, CartaoArredondado, EntradaArredondada, CabecalhoDegrade
 from modelo import Ticket
 from armazenamento import GerenciadorHistorico, gerar_relatorio
 from precos import GerenciadorPrecos
 from clientes import GerenciadorClientes, formatar_documento, formatar_telefone
+
+
+# ---------- Botões prontos (para manter o mesmo visual em todas as telas) ----------
+def botao_contorno(pai, texto, comando, icone=None, fundo_pai=None, pady=8, padx=14):
+    """Pílula branca com borda cinza (ação secundária)."""
+    return BotaoArredondado(
+        pai, text=texto, command=comando, icone=icone, bg=TEMA["painel"], fg=TEMA["texto"],
+        borda=TEMA["linha"], fundo_pai=fundo_pai or TEMA["fundo"], raio=999,
+        font=(FONTE, 9), padx=padx, pady=pady
+    )
+
+
+def botao_cheio(pai, texto, comando, icone=None, fundo_pai=None, pady=8, padx=14, cor=None,
+                fonte=(FONTE, 9, "bold")):
+    """Pílula azul preenchida (ação principal)."""
+    return BotaoArredondado(
+        pai, text=texto, command=comando, icone=icone, bg=cor or TEMA["destaque"],
+        fg=TEMA["sobre_destaque"], hover=TEMA["destaque_hover"], fundo_pai=fundo_pai or TEMA["fundo"],
+        raio=999, font=fonte, padx=padx, pady=pady
+    )
 
 
 class BalancaApp:
@@ -18,8 +40,8 @@ class BalancaApp:
         self.ao_sair = ao_sair
         self.root.title(f"Balança de Materiais — {empresa}" if empresa else "Balança de Materiais")
         self.root.configure(bg=TEMA["fundo"])
-        self.root.geometry("920x620")
-        self.root.minsize(860, 600)
+        self.root.geometry("980x680")
+        self.root.minsize(900, 640)
 
         self.ticket = Ticket()
         self.historico = GerenciadorHistorico()
@@ -39,29 +61,40 @@ class BalancaApp:
         style.theme_use("clam")
         style.configure("TFrame", background=TEMA["fundo"])
         style.configure("Painel.TFrame", background=TEMA["painel"])
-        style.configure("TLabel", background=TEMA["fundo"], foreground=TEMA["texto"], font=("Segoe UI Semibold", 10))
-        style.configure("Painel.TLabel", background=TEMA["painel"], foreground=TEMA["texto"], font=("Segoe UI Semibold", 10))
-        style.configure("Muted.TLabel", background=TEMA["fundo"], foreground=TEMA["muted"], font=("Segoe UI Semibold", 9))
-        style.configure("Titulo.TLabel", background=TEMA["fundo"], foreground=TEMA["texto"], font=("Segoe UI Semibold", 16, "bold"))
+        style.configure("TLabel", background=TEMA["fundo"], foreground=TEMA["texto"], font=(FONTE, 10))
+        style.configure("Painel.TLabel", background=TEMA["painel"], foreground=TEMA["texto"], font=(FONTE, 10))
+        style.configure("Muted.TLabel", background=TEMA["fundo"], foreground=TEMA["muted"], font=(FONTE, 9))
+        style.configure("Titulo.TLabel", background=TEMA["fundo"], foreground=TEMA["texto"], font=(FONTE, 16, "bold"))
 
+        # Lista de seleção sem borda (ela fica dentro de um cartão arredondado)
         style.configure(
             "TCombobox", fieldbackground=TEMA["painel"], background=TEMA["painel"],
-            foreground=TEMA["texto"], arrowcolor=TEMA["texto"], bordercolor=TEMA["linha"],
-            lightcolor=TEMA["painel"], darkcolor=TEMA["painel"], padding=6
+            foreground=TEMA["texto"], arrowcolor=TEMA["muted"], bordercolor=TEMA["painel"],
+            lightcolor=TEMA["painel"], darkcolor=TEMA["painel"], borderwidth=0, padding=4
         )
         style.map(
             "TCombobox",
             fieldbackground=[("readonly", TEMA["painel"])],
+            background=[("readonly", TEMA["painel"]), ("active", TEMA["painel"])],
             foreground=[("readonly", TEMA["texto"])],
             selectbackground=[("readonly", TEMA["painel"])],
             selectforeground=[("readonly", TEMA["texto"])],
+            arrowcolor=[("active", TEMA["destaque"])],
         )
+
+        # Barra de rolagem fina, sem setas
+        style.layout("Vertical.TScrollbar", [
+            ("Vertical.Scrollbar.trough", {"sticky": "ns", "children": [
+                ("Vertical.Scrollbar.thumb", {"expand": "1", "sticky": "nswe"})
+            ]})
+        ])
         style.configure(
             "Vertical.TScrollbar", troughcolor=TEMA["fundo"], background=TEMA["linha"],
-            bordercolor=TEMA["fundo"], arrowcolor=TEMA["muted"],
-            lightcolor=TEMA["linha"], darkcolor=TEMA["linha"]
+            bordercolor=TEMA["fundo"], lightcolor=TEMA["linha"], darkcolor=TEMA["linha"],
+            gripcount=0, width=9
         )
         style.map("Vertical.TScrollbar", background=[("active", TEMA["muted"])])
+
         self.root.option_add("*TCombobox*Listbox.background", TEMA["painel"])
         self.root.option_add("*TCombobox*Listbox.foreground", TEMA["texto"])
         self.root.option_add("*TCombobox*Listbox.selectBackground", TEMA["destaque"])
@@ -70,56 +103,32 @@ class BalancaApp:
 
     # ---------- Estrutura em abas ----------
     def _montar_abas(self):
-        cabecalho = tk.Frame(self.root, bg=TEMA["cabecalho"])
-        cabecalho.pack(fill="x")
-
-        linha_topo = tk.Frame(cabecalho, bg=TEMA["cabecalho"])
-        linha_topo.pack(fill="x", padx=20, pady=14)
-        titulo_box = tk.Frame(linha_topo, bg=TEMA["cabecalho"])
-        titulo_box.pack(side="left")
-        tk.Label(
-            titulo_box, text="Balança de Materiais", bg=TEMA["cabecalho"], fg=TEMA["sobre_destaque"],
-            font=("Segoe UI Semibold", 16, "bold")
-        ).pack(anchor="w")
-        subtitulo = f"Empresa: {self.empresa}" if self.empresa else "Pese, calcule e acompanhe o histórico das suas pesagens."
-        tk.Label(
-            titulo_box, text=subtitulo, bg=TEMA["cabecalho"], fg=TEMA["cabecalho_sub"],
-            font=("Segoe UI Semibold", 9)
-        ).pack(anchor="w", pady=(2, 0))
-
-        if self.ao_sair:
-            tk.Button(
-                linha_topo, text="Sair", font=("Segoe UI Semibold", 9, "bold"),
-                bg=TEMA["cabecalho_botao"], fg=TEMA["sobre_destaque"], relief="flat", padx=16, pady=6,
-                activebackground=TEMA["destaque"], activeforeground=TEMA["sobre_destaque"], cursor="hand2",
-                command=self._sair
-            ).pack(side="right")
+        subtitulo = f"Empresa: {self.empresa}" if self.empresa else "Pese, calcule e acompanhe suas pesagens."
+        CabecalhoDegrade(
+            self.root, "Balança de Materiais", subtitulo,
+            ao_sair=self._sair if self.ao_sair else None, fundo_pai=TEMA["fundo"]
+        ).pack(fill="x", padx=14, pady=(14, 0))
 
         self.abas_nomes = ["Pesagem", "Histórico", "Clientes"]
         self.aba_atual = 0
         self.animando = False
 
         barra_abas = tk.Frame(self.root, bg=TEMA["fundo"])
-        barra_abas.pack(fill="x", padx=20, pady=(10, 0))
+        barra_abas.pack(fill="x", padx=18, pady=(14, 4))
 
         self.botoes_aba = []
         for i, nome in enumerate(self.abas_nomes):
-            btn = tk.Button(
-                barra_abas, text=nome, font=("Segoe UI Semibold", 10),
-                bg=TEMA["fundo"], fg=TEMA["texto"] if i == 0 else TEMA["muted"],
-                activebackground=TEMA["fundo"], activeforeground=TEMA["texto"],
-                relief="flat", bd=0, padx=16, pady=8, cursor="hand2",
-                command=lambda idx=i: self._trocar_aba(idx),
+            btn = BotaoArredondado(
+                barra_abas, text=nome, command=lambda idx=i: self._trocar_aba(idx),
+                raio=999, padx=20, pady=7, font=(FONTE, 10), fundo_pai=TEMA["fundo"]
             )
-            btn.pack(side="left")
+            btn.pack(side="left", padx=(0, 8))
             self.botoes_aba.append(btn)
+        self._pintar_abas()
 
-        self.linha_indicador = tk.Frame(barra_abas, bg=TEMA["destaque"], height=2)
-        self.linha_indicador.place(x=0, y=34, width=90, height=2)
-
-        # Área de conteúdo: dois painéis sobrepostos, deslizam ao trocar de aba
+        # Área de conteúdo: painéis sobrepostos que deslizam ao trocar de aba
         self.area_conteudo = tk.Frame(self.root, bg=TEMA["fundo"])
-        self.area_conteudo.pack(fill="both", expand=True, padx=20, pady=(8, 16))
+        self.area_conteudo.pack(fill="both", expand=True, padx=18, pady=(4, 14))
 
         aba_pesagem = ttk.Frame(self.area_conteudo, style="TFrame")
         aba_historico = ttk.Frame(self.area_conteudo, style="TFrame")
@@ -133,13 +142,15 @@ class BalancaApp:
         self._montar_aba_historico(aba_historico)
         self._montar_aba_clientes(aba_clientes)
 
-        # Posiciona a linha indicadora certinho embaixo do 1º botão assim que a janela desenhar
-        self.root.after(50, self._posicionar_indicador_inicial)
-
-    def _posicionar_indicador_inicial(self):
-        btn = self.botoes_aba[self.aba_atual]
-        self.linha_indicador.place(x=btn.winfo_x(), y=btn.winfo_y() + btn.winfo_height() - 2,
-                                    width=btn.winfo_width(), height=2)
+    def _pintar_abas(self):
+        for i, btn in enumerate(self.botoes_aba):
+            if i == self.aba_atual:
+                btn.configure(
+                    bg=TEMA["destaque_claro"], fg=TEMA["destaque_escuro"],
+                    borda=TEMA["destaque_claro"], hover=TEMA["destaque_claro"]
+                )
+            else:
+                btn.configure(bg=TEMA["fundo"], fg=TEMA["muted"], borda=TEMA["linha"], hover=None)
 
     def _trocar_aba(self, indice):
         if indice == self.aba_atual or self.animando:
@@ -152,51 +163,30 @@ class BalancaApp:
         destino.place(relx=direcao, rely=0, relwidth=1, relheight=1)
         destino.lift()
 
-        btn_novo = self.botoes_aba[indice]
-        btn_antigo = self.botoes_aba[self.aba_atual]
-        btn_novo.configure(fg=TEMA["texto"])
-        btn_antigo.configure(fg=TEMA["muted"])
-
-        x_origem = self.botoes_aba[self.aba_atual].winfo_x()
-        largura_origem = self.botoes_aba[self.aba_atual].winfo_width()
-        x_destino = btn_novo.winfo_x()
-        largura_destino = btn_novo.winfo_width()
-        y_indicador = btn_novo.winfo_y() + btn_novo.winfo_height() - 2
-
         self.aba_atual = indice
+        self._pintar_abas()
         self.animando = True
-        self._animar_transicao(
-            origem, destino, direcao,
-            x_origem, largura_origem, x_destino, largura_destino, y_indicador,
-            passo=0, total_passos=14
-        )
+        self._animar_transicao(origem, destino, direcao, passo=0, total_passos=14)
 
-    def _animar_transicao(self, origem, destino, direcao, x_a, larg_a, x_b, larg_b, y_indicador, passo, total_passos):
+    def _animar_transicao(self, origem, destino, direcao, passo, total_passos):
         t = passo / total_passos
         t_suave = 1 - (1 - t) ** 3  # ease-out: começa rápido, termina suave
 
         origem.place(relx=-direcao * t_suave, rely=0, relwidth=1, relheight=1)
         destino.place(relx=direcao * (1 - t_suave), rely=0, relwidth=1, relheight=1)
 
-        x_atual = x_a + (x_b - x_a) * t_suave
-        largura_atual = larg_a + (larg_b - larg_a) * t_suave
-        self.linha_indicador.place(x=x_atual, y=y_indicador, width=largura_atual, height=2)
-
         if passo >= total_passos:
             self.animando = False
             return
-
         self.root.after(
-            12, lambda: self._animar_transicao(
-                origem, destino, direcao, x_a, larg_a, x_b, larg_b, y_indicador, passo + 1, total_passos
-            )
+            12, lambda: self._animar_transicao(origem, destino, direcao, passo + 1, total_passos)
         )
 
     # ---------- Aba Pesagem ----------
     def _montar_aba_pesagem(self, pai):
-        pai.columnconfigure(0, weight=1)
-        pai.columnconfigure(1, weight=1)
-        pai.columnconfigure(2, weight=1)
+        pai.columnconfigure(0, weight=4, uniform="pesagem")
+        pai.columnconfigure(1, weight=3, uniform="pesagem")
+        pai.columnconfigure(2, weight=3, uniform="pesagem")
         pai.rowconfigure(0, weight=1)
 
         self._montar_lista_materiais(pai)
@@ -204,155 +194,117 @@ class BalancaApp:
         self._montar_ticket(pai)
 
     def _montar_lista_materiais(self, pai):
-        frame = ttk.Frame(pai, padding=10)
-        frame.grid(row=0, column=0, sticky="nsew", padx=(0, 8), pady=10)
+        frame = tk.Frame(pai, bg=TEMA["fundo"])
+        frame.grid(row=0, column=0, sticky="nsew", padx=(0, 10), pady=6)
         frame.rowconfigure(1, weight=1)
         frame.columnconfigure(0, weight=1)
 
-        cabecalho_materiais = ttk.Frame(frame)
-        cabecalho_materiais.grid(row=0, column=0, sticky="ew", pady=(0, 8))
-        ttk.Label(cabecalho_materiais, text="Materiais", style="Muted.TLabel").pack(side="left")
-        tk.Button(
-            cabecalho_materiais, text="Editar preços", font=("Segoe UI Semibold", 8, "underline"),
-            bg=TEMA["fundo"], fg=TEMA["destaque"], relief="flat", bd=0, cursor="hand2",
-            activebackground=TEMA["fundo"], activeforeground=TEMA["destaque"],
-            command=self.abrir_edicao_precos
+        topo = tk.Frame(frame, bg=TEMA["fundo"])
+        topo.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+        tk.Label(topo, text="Materiais", bg=TEMA["fundo"], fg=TEMA["texto"], font=(FONTE, 11)).pack(side="left")
+        botao_contorno(
+            topo, "Editar preços", self.abrir_edicao_precos, icone="lapis", pady=5, padx=12
         ).pack(side="right")
 
-        # Área rolável: um Canvas com uma Frame dentro, mais a Scrollbar
-        canvas = tk.Canvas(frame, bg=TEMA["fundo"], highlightthickness=0, bd=0)
-        scrollbar = ttk.Scrollbar(frame, orient="vertical", command=canvas.yview)
-        area_interna = tk.Frame(canvas, bg=TEMA["fundo"])
-
-        area_interna.bind(
-            "<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
-        janela_id = canvas.create_window((0, 0), window=area_interna, anchor="nw")
-        canvas.bind("<Configure>", lambda e: canvas.itemconfig(janela_id, width=e.width))
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        canvas.grid(row=1, column=0, sticky="nsew")
-        scrollbar.grid(row=1, column=1, sticky="ns")
-
-        def _rolar_com_mouse(event):
-            # Windows/Mac usam event.delta; Linux usa Button-4/5
-            delta = -1 * (event.delta // 120) if event.delta else (-1 if event.num == 4 else 1)
-            canvas.yview_scroll(delta, "units")
-
-        for alvo in (canvas, area_interna):
-            alvo.bind("<MouseWheel>", _rolar_com_mouse)   # Windows / macOS
-            alvo.bind("<Button-4>", _rolar_com_mouse)      # Linux (scroll up)
-            alvo.bind("<Button-5>", _rolar_com_mouse)      # Linux (scroll down)
-
+        area, rolar = self._criar_area_rolavel(frame, coluna=0)
         self.botoes_material = {}
         for m in self.precos.listar():
-            btn = tk.Button(
-                area_interna, text=f"{m['nome']}\nR$ {m['preco']:.2f}/kg",
-                font=("Segoe UI Semibold", 10), bg=TEMA["painel"], fg=TEMA["texto"],
-                activebackground=TEMA["painel_ativo"], activeforeground=TEMA["texto"],
-                relief="flat", bd=0, justify="left", anchor="w", padx=12, pady=10,
-                command=lambda mat=m: self.selecionar_material(mat),
+            btn = BotaoArredondado(
+                area, text=f"{m['nome']}\nR$ {m['preco']:.2f}/kg", alinhamento="w", sombra=True,
+                raio=16, font=(FONTE, 10), font_sec=(FONTE, 9), fg_sec=TEMA["muted"],
+                padx=18, pady=10, command=lambda mat=m: self.selecionar_material(mat)
             )
-            btn.pack(fill="x", pady=3)
-            btn.bind("<MouseWheel>", _rolar_com_mouse)
-            btn.bind("<Button-4>", _rolar_com_mouse)
-            btn.bind("<Button-5>", _rolar_com_mouse)
+            btn.pack(fill="x", pady=(2, 3), padx=(0, 4))
+            for evento in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
+                btn.bind(evento, rolar)
             self.botoes_material[m["nome"]] = btn
 
     def _montar_painel_visor(self, pai):
-        frame = ttk.Frame(pai, style="Painel.TFrame", padding=20)
-        frame.grid(row=0, column=1, sticky="nsew", padx=8, pady=10)
+        cartao = CartaoArredondado(pai, raio=24, padx=22, pady=18)
+        cartao.grid(row=0, column=1, sticky="nsew", padx=5, pady=6)
+        frame = cartao.interior
 
         self.lbl_material = tk.Label(
-            frame, text="Selecione um material", bg=TEMA["painel"], fg=TEMA["muted"], font=("Segoe UI Semibold", 10)
+            frame, text="Selecione um material", bg=TEMA["painel"], fg=TEMA["muted"], font=(FONTE, 10)
         )
         self.lbl_material.pack(pady=(10, 6))
 
         self.lbl_peso_visor = tk.Label(
-            frame, text="0.00 kg", bg=TEMA["painel"], fg=TEMA["destaque"], font=("Consolas", 32, "bold")
+            frame, text="0.00 kg", bg=TEMA["painel"], fg=TEMA["destaque"], font=(FONTE_MONO, 32, "bold")
         )
         self.lbl_peso_visor.pack(pady=(0, 16))
 
-        self.entry_peso = tk.Entry(
-            frame, font=("Consolas", 14), justify="center",
-            bg=TEMA["fundo"], fg=TEMA["texto"], insertbackground=TEMA["texto"], relief="flat"
+        campo = EntradaArredondada(
+            frame, fundo_pai=TEMA["painel"], justify="center", font=(FONTE_MONO, 14), raio=999
         )
-        self.entry_peso.pack(fill="x", ipady=8, pady=(0, 4))
+        campo.pack(fill="x", pady=(0, 6))
+        self.entry_peso = campo.entry
         self.entry_peso.bind("<KeyRelease>", lambda e: self.atualizar_calculo())
 
-        ttk.Label(frame, text="Peso em kg", style="Painel.TLabel").pack(pady=(0, 14))
+        tk.Label(frame, text="Peso em kg", bg=TEMA["painel"], fg=TEMA["muted"], font=(FONTE, 9)).pack(pady=(0, 14))
 
         self.lbl_valor = tk.Label(
-            frame, text="Valor: R$ 0,00", bg=TEMA["painel"], fg=TEMA["total"], font=("Consolas", 13, "bold")
+            frame, text="Valor: R$ 0,00", bg=TEMA["painel"], fg=TEMA["total"], font=(FONTE_MONO, 13, "bold")
         )
         self.lbl_valor.pack(pady=(0, 18))
 
-        self.btn_adicionar = tk.Button(
-            frame, text="Adicionar à pesagem", font=("Segoe UI Semibold", 11, "bold"),
-            bg=TEMA["desabilitado"], fg=TEMA["sobre_destaque"], disabledforeground=TEMA["texto_desabilitado"],
-            activebackground=TEMA["total"], activeforeground=TEMA["sobre_destaque"],
-            relief="flat", padx=10, pady=10, state="disabled", command=self.adicionar_item
+        self.btn_adicionar = BotaoArredondado(
+            frame, text="Adicionar à pesagem", command=self.adicionar_item, bg=TEMA["desabilitado"],
+            fg=TEMA["sobre_destaque"], hover=TEMA["destaque_hover"], fundo_pai=TEMA["painel"],
+            raio=999, font=(FONTE, 11, "bold"), pady=12, state="disabled"
         )
         self.btn_adicionar.pack(fill="x")
 
     def _montar_ticket(self, pai):
-        frame = ttk.Frame(pai, padding=10)
-        frame.grid(row=0, column=2, sticky="nsew", padx=(8, 0), pady=10)
+        frame = tk.Frame(pai, bg=TEMA["fundo"])
+        frame.grid(row=0, column=2, sticky="nsew", padx=(10, 0), pady=6)
 
-        ttk.Label(frame, text="Pesagem atual", style="Muted.TLabel").pack(anchor="w", pady=(0, 8))
+        tk.Label(frame, text="Pesagem atual", bg=TEMA["fundo"], fg=TEMA["texto"], font=(FONTE, 11)).pack(anchor="w", pady=(0, 8))
 
         linha_cliente = tk.Frame(frame, bg=TEMA["fundo"])
-        linha_cliente.pack(fill="x", pady=(0, 4))
-        ttk.Label(linha_cliente, text="Cliente (opcional)", style="Muted.TLabel").pack(side="left")
-        tk.Button(
-            linha_cliente, text="+ Novo", font=("Segoe UI Semibold", 8, "underline"),
-            bg=TEMA["fundo"], fg=TEMA["destaque"], relief="flat", bd=0, cursor="hand2",
-            activebackground=TEMA["fundo"], activeforeground=TEMA["destaque"],
+        linha_cliente.pack(fill="x", pady=(0, 6))
+        tk.Label(
+            linha_cliente, text="Cliente (opcional)", bg=TEMA["fundo"], fg=TEMA["muted"], font=(FONTE, 9)
+        ).pack(side="left")
+        BotaoArredondado(
+            linha_cliente, text="Novo", icone="mais", bg=TEMA["destaque_claro"], fg=TEMA["destaque_escuro"],
+            fundo_pai=TEMA["fundo"], raio=999, font=(FONTE, 9, "bold"), padx=12, pady=4,
             command=lambda: self.abrir_cadastro_cliente(ao_salvar=self._selecionar_cliente_na_pesagem)
         ).pack(side="right")
-        self.combo_cliente = ttk.Combobox(frame, state="readonly", font=("Segoe UI Semibold", 10))
-        self.combo_cliente.pack(fill="x", pady=(0, 10))
+
+        cartao_combo = CartaoArredondado(
+            frame, raio=14, padx=10, pady=4, sombra=False, ajustar=True, borda=TEMA["linha"]
+        )
+        cartao_combo.pack(fill="x", pady=(0, 10))
+        self.combo_cliente = ttk.Combobox(cartao_combo.interior, state="readonly", font=(FONTE, 10))
+        self.combo_cliente.pack(fill="x")
         self._atualizar_combo_clientes()
 
+        cartao_lista = CartaoArredondado(frame, raio=16, padx=10, pady=8)
+        cartao_lista.pack(fill="both", expand=True)
         self.lista_ticket = tk.Listbox(
-            frame, height=4, bg=TEMA["fundo"], fg=TEMA["texto"], relief="flat",
-            font=("Consolas", 10), highlightthickness=0, selectbackground=TEMA["painel_ativo"], selectforeground=TEMA["texto"]
+            cartao_lista.interior, height=3, bg=TEMA["painel"], fg=TEMA["texto"], relief="flat", bd=0,
+            font=(FONTE_MONO, 10), highlightthickness=0, activestyle="none",
+            selectbackground=TEMA["painel_ativo"], selectforeground=TEMA["texto"]
         )
         self.lista_ticket.pack(fill="both", expand=True)
 
         linha_total = tk.Frame(frame, bg=TEMA["fundo"])
-        linha_total.pack(fill="x", pady=(10, 6))
-        tk.Label(linha_total, text="Total", bg=TEMA["fundo"], fg=TEMA["muted"], font=("Segoe UI Semibold", 10)).pack(side="left")
+        linha_total.pack(fill="x", pady=(10, 8))
+        tk.Label(linha_total, text="Total", bg=TEMA["fundo"], fg=TEMA["muted"], font=(FONTE, 10)).pack(side="left")
         self.lbl_total = tk.Label(
-            linha_total, text="R$ 0,00", bg=TEMA["fundo"], fg=TEMA["total"], font=("Consolas", 16, "bold")
+            linha_total, text="R$ 0,00", bg=TEMA["fundo"], fg=TEMA["total"], font=(FONTE_MONO, 17, "bold")
         )
         self.lbl_total.pack(side="right")
 
-        tk.Button(
-            frame, text="Remover selecionado", font=("Segoe UI Semibold", 9),
-            bg=TEMA["painel"], fg=TEMA["texto"], relief="flat", padx=6, pady=6,
-            command=self.remover_item
-        ).pack(fill="x", pady=(4, 4))
+        botao_contorno(frame, "Remover selecionado", self.remover_item, "lixeira").pack(fill="x", pady=(0, 6))
+        botao_cheio(
+            frame, "Finalizar e salvar no histórico", self.finalizar_pesagem, "check", cor=TEMA["total"]
+        ).pack(fill="x", pady=(0, 6))
+        botao_contorno(frame, "Gerar relatório (.txt)", self.gerar_relatorio_atual, "documento").pack(fill="x", pady=(0, 6))
+        botao_contorno(frame, "Limpar pesagem", self.limpar_pesagem, "lixeira").pack(fill="x")
 
-        tk.Button(
-            frame, text="Finalizar e salvar no histórico", font=("Segoe UI Semibold", 9, "bold"),
-            bg=TEMA["total"], fg=TEMA["sobre_destaque"], relief="flat", padx=6, pady=8,
-            command=self.finalizar_pesagem
-        ).pack(fill="x", pady=(0, 4))
-
-        tk.Button(
-            frame, text="Gerar relatório (.txt)", font=("Segoe UI Semibold", 9),
-            bg=TEMA["painel"], fg=TEMA["muted"], relief="flat", padx=6, pady=6,
-            highlightbackground=TEMA["linha"], command=self.gerar_relatorio_atual
-        ).pack(fill="x", pady=(0, 4))
-
-        tk.Button(
-            frame, text="Limpar pesagem", font=("Segoe UI Semibold", 9),
-            bg=TEMA["painel"], fg=TEMA["muted"], relief="flat", padx=6, pady=6,
-            highlightbackground=TEMA["linha"], command=self.limpar_pesagem
-        ).pack(fill="x")
-
-    # ---------- Aba Histórico ----------
+    # ---------- Lista rolável (usada em várias abas) ----------
     def _criar_area_rolavel(self, pai, coluna, linha=1):
         """Cria um Canvas+Scrollbar dentro de 'pai' na coluna dada e devolve a frame interna rolável."""
         container = tk.Frame(pai, bg=TEMA["fundo"])
@@ -367,10 +319,17 @@ class BalancaApp:
         area_interna.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
         janela_id = canvas.create_window((0, 0), window=area_interna, anchor="nw")
         canvas.bind("<Configure>", lambda e: canvas.itemconfig(janela_id, width=e.width))
-        canvas.configure(yscrollcommand=scrollbar.set)
+        def _atualizar_barra(inicio, fim):
+            scrollbar.set(inicio, fim)
+            if float(inicio) <= 0.0 and float(fim) >= 1.0:
+                scrollbar.grid_remove()  # tudo cabe na tela: esconde a barra
+            else:
+                scrollbar.grid()
+
+        canvas.configure(yscrollcommand=_atualizar_barra)
 
         canvas.grid(row=0, column=0, sticky="nsew")
-        scrollbar.grid(row=0, column=1, sticky="ns")
+        scrollbar.grid(row=0, column=1, sticky="ns", padx=(4, 0))
 
         def _rolar(event):
             delta = -1 * (event.delta // 120) if event.delta else (-1 if event.num == 4 else 1)
@@ -383,23 +342,33 @@ class BalancaApp:
 
         return area_interna, _rolar
 
+    def _ligar_rolagem(self, widget, rolar):
+        """Faz a roda do mouse rolar a lista mesmo com o cursor sobre um cartão."""
+        for evento in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
+            widget.bind(evento, rolar)
+        for filho in widget.winfo_children():
+            self._ligar_rolagem(filho, rolar)
+
+    # ---------- Aba Histórico ----------
     def _montar_aba_historico(self, pai):
-        frame = ttk.Frame(pai, padding=16)
+        frame = tk.Frame(pai, bg=TEMA["fundo"])
         frame.pack(fill="both", expand=True)
-        frame.columnconfigure(0, weight=1)
-        frame.columnconfigure(1, weight=1)
+        frame.columnconfigure(0, weight=1, uniform="hist")
+        frame.columnconfigure(1, weight=1, uniform="hist")
         frame.rowconfigure(1, weight=1)
 
-        ttk.Label(frame, text="Pesagens finalizadas", style="Muted.TLabel").grid(row=0, column=0, sticky="w", pady=(0, 8))
-        ttk.Label(frame, text="Itens da pesagem selecionada", style="Muted.TLabel").grid(row=0, column=1, sticky="w", padx=(16, 0), pady=(0, 8))
+        tk.Label(
+            frame, text="Pesagens finalizadas", bg=TEMA["fundo"], fg=TEMA["texto"], font=(FONTE, 11)
+        ).grid(row=0, column=0, sticky="w", pady=(6, 8))
+        tk.Label(
+            frame, text="Itens da pesagem selecionada", bg=TEMA["fundo"], fg=TEMA["texto"], font=(FONTE, 11)
+        ).grid(row=0, column=1, sticky="w", padx=(16, 0), pady=(6, 8))
 
         self.area_lista_historico, rolar_hist = self._criar_area_rolavel(frame, coluna=0)
         self.area_detalhe_historico, rolar_det = self._criar_area_rolavel(frame, coluna=1)
 
-        tk.Button(
-            frame, text="Atualizar lista", font=("Segoe UI Semibold", 9),
-            bg=TEMA["fundo"], fg=TEMA["muted"], relief="flat", padx=6, pady=6,
-            command=self.atualizar_historico
+        botao_contorno(
+            frame, "Atualizar lista", self.atualizar_historico, icone="atualizar"
         ).grid(row=2, column=0, sticky="ew", pady=(10, 0))
 
         self._registros_historico = []
@@ -423,22 +392,20 @@ class BalancaApp:
         if not registros:
             tk.Label(
                 self.area_lista_historico, text="Nenhuma pesagem finalizada ainda.",
-                bg=TEMA["fundo"], fg=TEMA["muted"], font=("Segoe UI Semibold", 10)
+                bg=TEMA["fundo"], fg=TEMA["muted"], font=(FONTE, 10)
             ).pack(anchor="w", pady=8)
             return
 
         for idx, reg in enumerate(registros):
             qtd_itens = len(reg["itens"])
             cliente = reg.get("cliente") or "Cliente não informado"
-            btn = tk.Button(
+            btn = BotaoArredondado(
                 self.area_lista_historico,
                 text=f"{cliente}\n{reg['data']}\n{qtd_itens} item(ns)  •  R$ {reg['total']:.2f}",
-                font=("Segoe UI Semibold", 10), bg=TEMA["painel"], fg=TEMA["texto"],
-                activebackground=TEMA["painel_ativo"], activeforeground=TEMA["texto"],
-                relief="flat", bd=0, justify="left", anchor="w", padx=12, pady=10,
-                command=lambda i=idx: self._selecionar_registro(i),
+                alinhamento="w", sombra=True, raio=16, font=(FONTE, 10), font_sec=(FONTE, 9),
+                fg_sec=TEMA["muted"], padx=18, pady=10, command=lambda i=idx: self._selecionar_registro(i)
             )
-            btn.pack(fill="x", pady=3)
+            btn.pack(fill="x", pady=(2, 3), padx=(0, 4))
             for evento in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
                 btn.bind(evento, self._rolar_hist)
             self._botoes_registro.append(btn)
@@ -457,65 +424,79 @@ class BalancaApp:
             return
         registro = self._registros_historico[idx]
         for item in registro["itens"]:
-            card = tk.Frame(self.area_detalhe_historico, bg=TEMA["painel"])
-            card.pack(fill="x", pady=3)
+            cartao = CartaoArredondado(
+                self.area_detalhe_historico, raio=14, padx=16, pady=10, ajustar=True
+            )
+            cartao.pack(fill="x", pady=(2, 3), padx=(0, 4))
             tk.Label(
-                card, text=item["nome"], font=("Segoe UI Semibold", 10),
-                bg=TEMA["painel"], fg=TEMA["texto"], anchor="w", padx=12
-            ).pack(fill="x", pady=(10, 0))
+                cartao.interior, text=item["nome"], font=(FONTE, 10),
+                bg=TEMA["painel"], fg=TEMA["texto"], anchor="w"
+            ).pack(fill="x")
             tk.Label(
-                card, text=f"{item['peso']:.2f} kg  •  R$ {item['valor']:.2f}",
-                font=("Segoe UI Semibold", 9), bg=TEMA["painel"], fg=TEMA["muted"], anchor="w", padx=12
-            ).pack(fill="x", pady=(0, 10))
-            for widget in (card, *card.winfo_children()):
-                for evento in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
-                    widget.bind(evento, self._rolar_det)
+                cartao.interior, text=f"{item['peso']:.2f} kg  •  R$ {item['valor']:.2f}",
+                font=(FONTE, 9), bg=TEMA["painel"], fg=TEMA["muted"], anchor="w"
+            ).pack(fill="x")
+            self._ligar_rolagem(cartao, self._rolar_det)
 
-        card_total = tk.Frame(self.area_detalhe_historico, bg=TEMA["fundo"], highlightbackground=TEMA["linha"], highlightthickness=1)
-        card_total.pack(fill="x", pady=(10, 3))
+        cartao_total = CartaoArredondado(
+            self.area_detalhe_historico, bg=TEMA["destaque_claro"], raio=14, padx=16, pady=10,
+            ajustar=True, sombra=False
+        )
+        cartao_total.pack(fill="x", pady=(10, 3), padx=(0, 4))
         tk.Label(
-            card_total, text="Total da pesagem", font=("Segoe UI Semibold", 9),
-            bg=TEMA["fundo"], fg=TEMA["muted"], anchor="w", padx=12
-        ).pack(fill="x", pady=(10, 0))
+            cartao_total.interior, text="Total da pesagem", font=(FONTE, 9),
+            bg=TEMA["destaque_claro"], fg=TEMA["destaque_escuro"], anchor="w"
+        ).pack(fill="x")
         tk.Label(
-            card_total, text=f"R$ {registro['total']:.2f}", font=("Consolas", 16, "bold"),
-            bg=TEMA["fundo"], fg=TEMA["total"], anchor="w", padx=12
-        ).pack(fill="x", pady=(0, 10))
-        for widget in (card_total, *card_total.winfo_children()):
-            for evento in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
-                widget.bind(evento, self._rolar_det)
+            cartao_total.interior, text=f"R$ {registro['total']:.2f}", font=(FONTE_MONO, 17, "bold"),
+            bg=TEMA["destaque_claro"], fg=TEMA["destaque_escuro"], anchor="w"
+        ).pack(fill="x")
+        self._ligar_rolagem(cartao_total, self._rolar_det)
 
+    # ---------- Edição de preços ----------
     def abrir_edicao_precos(self):
         janela = tk.Toplevel(self.root)
         janela.title("Editar preços dos materiais")
         janela.configure(bg=TEMA["fundo"])
-        janela.geometry("320x440")
+        janela.geometry("420x620")
         janela.resizable(False, False)
         janela.transient(self.root)
         janela.grab_set()
 
-        container = ttk.Frame(janela, padding=20)
-        container.pack(fill="both", expand=True)
-        ttk.Label(container, text="Preço por kg (R$)", style="Titulo.TLabel").pack(anchor="w")
-        ttk.Label(
-            container, text="Altere os valores e clique em salvar.", style="Muted.TLabel"
-        ).pack(anchor="w", pady=(2, 14))
+        container = tk.Frame(janela, bg=TEMA["fundo"])
+        container.pack(fill="both", expand=True, padx=24, pady=22)
+        container.rowconfigure(2, weight=1)
+        container.columnconfigure(0, weight=1)
 
+        tk.Label(
+            container, text="Preço por kg (R$)", bg=TEMA["fundo"], fg=TEMA["texto"], font=(FONTE, 16, "bold")
+        ).grid(row=0, column=0, sticky="w")
+        tk.Label(
+            container, text="Altere os valores e clique em salvar.", bg=TEMA["fundo"],
+            fg=TEMA["muted"], font=(FONTE, 9)
+        ).grid(row=1, column=0, sticky="w", pady=(2, 12))
+
+        area, rolar = self._criar_area_rolavel(container, coluna=0, linha=2)
         entradas = {}
         for m in self.precos.listar():
-            linha = tk.Frame(container, bg=TEMA["fundo"])
-            linha.pack(fill="x", pady=4)
-            tk.Label(linha, text=m["nome"], bg=TEMA["fundo"], fg=TEMA["texto"], font=("Segoe UI Semibold", 10), width=10, anchor="w").pack(side="left")
-            entrada = tk.Entry(
-                linha, font=("Consolas", 11), bg=TEMA["painel"], fg=TEMA["texto"],
-                insertbackground=TEMA["texto"], relief="flat", justify="right", width=10
+            linha = tk.Frame(area, bg=TEMA["fundo"])
+            linha.pack(fill="x", pady=4, padx=(0, 6))
+            tk.Label(
+                linha, text=m["nome"], bg=TEMA["fundo"], fg=TEMA["texto"], font=(FONTE, 10), anchor="w"
+            ).pack(side="left")
+            campo = EntradaArredondada(
+                linha, fundo_pai=TEMA["fundo"], bg=TEMA["painel"], justify="right",
+                font=(FONTE_MONO, 11), largura_chars=9, raio=999, pady=7
             )
-            entrada.insert(0, f"{m['preco']:.2f}")
-            entrada.pack(side="right", ipady=4)
-            entradas[m["nome"]] = entrada
+            campo.pack(side="right")
+            campo.entry.insert(0, f"{m['preco']:.2f}")
+            entradas[m["nome"]] = campo.entry
+            self._ligar_rolagem(linha, rolar)
 
-        lbl_erro = tk.Label(container, text="", bg=TEMA["fundo"], fg=TEMA["erro"], font=("Segoe UI Semibold", 9))
-        lbl_erro.pack(anchor="w", pady=(10, 0))
+        lbl_erro = tk.Label(
+            container, text="", bg=TEMA["fundo"], fg=TEMA["erro"], font=(FONTE, 9), anchor="w"
+        )
+        lbl_erro.grid(row=3, column=0, sticky="ew", pady=(10, 0))
 
         def salvar():
             novos = {}
@@ -533,16 +514,10 @@ class BalancaApp:
             self._atualizar_textos_materiais()
             janela.destroy()
 
-        tk.Button(
-            container, text="Salvar", font=("Segoe UI Semibold", 11, "bold"),
-            bg=TEMA["destaque"], fg=TEMA["sobre_destaque"], relief="flat", padx=10, pady=10,
-            command=salvar
-        ).pack(fill="x", pady=(16, 6))
-        tk.Button(
-            container, text="Cancelar", font=("Segoe UI Semibold", 9),
-            bg=TEMA["fundo"], fg=TEMA["muted"], relief="flat", padx=6, pady=6,
-            command=janela.destroy
-        ).pack(fill="x")
+        botao_cheio(container, "Salvar", salvar, fundo_pai=TEMA["fundo"], pady=11, fonte=(FONTE, 11, "bold")).grid(
+            row=4, column=0, sticky="ew", pady=(14, 6)
+        )
+        botao_contorno(container, "Cancelar", janela.destroy).grid(row=5, column=0, sticky="ew")
 
     def _atualizar_textos_materiais(self):
         for m in self.precos.listar():
@@ -592,93 +567,88 @@ class BalancaApp:
         self.ticket.cliente_id = cliente["id"] if cliente else None
 
     # ---------- Aba Clientes ----------
-    def _ligar_rolagem(self, widget, rolar):
-        """Faz a roda do mouse rolar a lista mesmo com o cursor sobre um cartão."""
-        for evento in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
-            widget.bind(evento, rolar)
-        for filho in widget.winfo_children():
-            self._ligar_rolagem(filho, rolar)
-
     def _montar_aba_clientes(self, pai):
         self._msg_filtro = "Formato dd/mm/aaaa. Para um único dia, use a mesma data nos dois campos."
 
-        frame = ttk.Frame(pai, padding=16)
+        frame = tk.Frame(pai, bg=TEMA["fundo"])
         frame.pack(fill="both", expand=True)
         frame.columnconfigure(0, weight=2, uniform="clientes")
         frame.columnconfigure(1, weight=3, uniform="clientes")
         frame.rowconfigure(1, weight=1)
 
         # Coluna da esquerda: lista de clientes
-        topo = ttk.Frame(frame)
-        topo.grid(row=0, column=0, sticky="ew", pady=(0, 8))
-        ttk.Label(topo, text="Clientes cadastrados", style="Muted.TLabel").pack(side="left")
-        tk.Button(
-            topo, text="+ Novo cliente", font=("Segoe UI Semibold", 9, "bold"),
-            bg=TEMA["destaque"], fg=TEMA["sobre_destaque"], relief="flat", padx=10, pady=4, cursor="hand2",
-            command=lambda: self.abrir_cadastro_cliente(ao_salvar=self._selecionar_cliente_na_lista)
+        topo = tk.Frame(frame, bg=TEMA["fundo"])
+        topo.grid(row=0, column=0, sticky="ew", pady=(6, 8))
+        tk.Label(topo, text="Clientes cadastrados", bg=TEMA["fundo"], fg=TEMA["texto"], font=(FONTE, 11)).pack(side="left")
+        botao_cheio(
+            topo, "Novo cliente",
+            lambda: self.abrir_cadastro_cliente(ao_salvar=self._selecionar_cliente_na_lista),
+            icone="mais", pady=5, padx=14
         ).pack(side="right")
         self.area_lista_clientes, self._rolar_clientes = self._criar_area_rolavel(frame, coluna=0)
 
         # Coluna da direita: dados do cliente, filtro por data e histórico dele
         direita = tk.Frame(frame, bg=TEMA["fundo"])
-        direita.grid(row=0, column=1, rowspan=2, sticky="nsew", padx=(16, 0))
+        direita.grid(row=0, column=1, rowspan=2, sticky="nsew", padx=(16, 0), pady=(6, 0))
         direita.columnconfigure(0, weight=1)
         direita.rowconfigure(3, weight=1)
 
         self.lbl_cliente_nome = tk.Label(
             direita, text="Selecione um cliente", bg=TEMA["fundo"], fg=TEMA["texto"],
-            font=("Segoe UI Semibold", 14, "bold"), anchor="w"
+            font=(FONTE, 15, "bold"), anchor="w"
         )
         self.lbl_cliente_nome.grid(row=0, column=0, sticky="ew")
         self.lbl_cliente_dados = tk.Label(
-            direita, text="", bg=TEMA["fundo"], fg=TEMA["muted"],
-            font=("Segoe UI Semibold", 9), anchor="w", justify="left"
+            direita, text="", bg=TEMA["fundo"], fg=TEMA["muted"], font=(FONTE, 9), anchor="w", justify="left"
         )
         self.lbl_cliente_dados.grid(row=1, column=0, sticky="ew", pady=(2, 8))
 
-        barra = tk.Frame(direita, bg=TEMA["painel"])
-        barra.grid(row=2, column=0, sticky="ew", pady=(0, 8))
-        interno = tk.Frame(barra, bg=TEMA["painel"])
-        interno.pack(fill="x", padx=10, pady=(8, 4))
+        barra = CartaoArredondado(direita, raio=16, padx=14, pady=10, ajustar=True)
+        barra.grid(row=2, column=0, sticky="ew", pady=(0, 8), padx=(0, 4))
+        interno = tk.Frame(barra.interior, bg=TEMA["painel"])
+        interno.pack(fill="x")
 
         def entrada_data():
-            return tk.Entry(
-                interno, width=10, font=("Consolas", 10), justify="center", bg=TEMA["fundo"],
-                fg=TEMA["texto"], insertbackground=TEMA["texto"], relief="flat"
+            campo = EntradaArredondada(
+                interno, fundo_pai=TEMA["painel"], largura_chars=10, font=(FONTE_MONO, 10),
+                justify="center", raio=999, pady=6, padx=10
             )
+            campo.entry.bind("<Return>", lambda e: self._renderizar_pesagens_cliente())
+            return campo
 
-        tk.Label(interno, text="De", bg=TEMA["painel"], fg=TEMA["muted"], font=("Segoe UI Semibold", 9)).pack(side="left")
-        self.entry_data_de = entrada_data()
-        self.entry_data_de.pack(side="left", padx=(6, 10), ipady=4)
-        tk.Label(interno, text="Até", bg=TEMA["painel"], fg=TEMA["muted"], font=("Segoe UI Semibold", 9)).pack(side="left")
-        self.entry_data_ate = entrada_data()
-        self.entry_data_ate.pack(side="left", padx=(6, 10), ipady=4)
-        for entrada in (self.entry_data_de, self.entry_data_ate):
-            entrada.bind("<Return>", lambda e: self._renderizar_pesagens_cliente())
+        tk.Label(interno, text="De", bg=TEMA["painel"], fg=TEMA["muted"], font=(FONTE, 9)).pack(side="left")
+        campo_de = entrada_data()
+        campo_de.pack(side="left", padx=(6, 10))
+        self.entry_data_de = campo_de.entry
+        tk.Label(interno, text="Até", bg=TEMA["painel"], fg=TEMA["muted"], font=(FONTE, 9)).pack(side="left")
+        campo_ate = entrada_data()
+        campo_ate.pack(side="left", padx=(6, 10))
+        self.entry_data_ate = campo_ate.entry
 
-        tk.Button(
-            interno, text="Filtrar", font=("Segoe UI Semibold", 9, "bold"),
-            bg=TEMA["destaque"], fg=TEMA["sobre_destaque"], relief="flat", padx=10, pady=3, cursor="hand2",
-            command=self._renderizar_pesagens_cliente
+        botao_cheio(
+            interno, "Filtrar", self._renderizar_pesagens_cliente, fundo_pai=TEMA["painel"], pady=6, padx=14
         ).pack(side="left", padx=(0, 6))
-        tk.Button(
-            interno, text="Limpar", font=("Segoe UI Semibold", 9),
-            bg=TEMA["painel"], fg=TEMA["muted"], relief="flat", padx=6, pady=3, cursor="hand2",
-            command=self._limpar_filtro
+        botao_contorno(
+            interno, "Limpar", self._limpar_filtro, fundo_pai=TEMA["painel"], pady=6, padx=12
         ).pack(side="left")
 
         self.lbl_filtro_msg = tk.Label(
-            barra, text=self._msg_filtro, bg=TEMA["painel"], fg=TEMA["muted"],
-            font=("Segoe UI Semibold", 8), anchor="w", justify="left", wraplength=400
+            barra.interior, text=self._msg_filtro, bg=TEMA["painel"], fg=TEMA["muted"],
+            font=(FONTE, 8), anchor="w", justify="left", wraplength=420
         )
-        self.lbl_filtro_msg.pack(fill="x", padx=10, pady=(0, 8))
+        self.lbl_filtro_msg.pack(fill="x", pady=(8, 0))
 
         self.area_pesagens_cliente, self._rolar_pesagens = self._criar_area_rolavel(direita, coluna=0, linha=3)
-        self.lbl_resumo = tk.Label(
-            direita, text="", bg=TEMA["painel"], fg=TEMA["total"],
-            font=("Consolas", 11, "bold"), anchor="w", padx=12, pady=8
+
+        cartao_resumo = CartaoArredondado(
+            direita, bg=TEMA["destaque_claro"], raio=16, padx=16, pady=9, ajustar=True, sombra=False
         )
-        self.lbl_resumo.grid(row=4, column=0, sticky="ew", pady=(8, 0))
+        cartao_resumo.grid(row=4, column=0, sticky="ew", pady=(8, 0), padx=(0, 4))
+        self.lbl_resumo = tk.Label(
+            cartao_resumo.interior, text="", bg=TEMA["destaque_claro"], fg=TEMA["destaque_escuro"],
+            font=(FONTE_MONO, 11, "bold"), anchor="w"
+        )
+        self.lbl_resumo.pack(fill="x")
 
         self._atualizar_lista_clientes()
 
@@ -690,22 +660,21 @@ class BalancaApp:
         lista = self.clientes.listar()
         if not lista:
             tk.Label(
-                self.area_lista_clientes, text="Nenhum cliente cadastrado ainda.\nClique em \"+ Novo cliente\".",
-                bg=TEMA["fundo"], fg=TEMA["muted"], font=("Segoe UI Semibold", 10), justify="left"
+                self.area_lista_clientes, text="Nenhum cliente cadastrado ainda.\nClique em \"Novo cliente\".",
+                bg=TEMA["fundo"], fg=TEMA["muted"], font=(FONTE, 10), justify="left"
             ).pack(anchor="w", pady=8)
             return
 
         for c in lista:
             ativo = c["id"] == self._cliente_sel_id
-            btn = tk.Button(
+            btn = BotaoArredondado(
                 self.area_lista_clientes,
                 text=f"{c['nome']}\n{formatar_documento(c['documento'])}  •  {formatar_telefone(c['numero'])}",
-                font=("Segoe UI Semibold", 10), bg=TEMA["painel_ativo"] if ativo else TEMA["painel"],
-                fg=TEMA["texto"], activebackground=TEMA["painel_ativo"], activeforeground=TEMA["texto"],
-                relief="flat", bd=0, justify="left", anchor="w", padx=12, pady=10,
-                command=lambda cid=c["id"]: self._mostrar_cliente(cid),
+                bg=TEMA["painel_ativo"] if ativo else TEMA["painel"], alinhamento="w", sombra=True,
+                raio=16, font=(FONTE, 10), font_sec=(FONTE, 9), fg_sec=TEMA["muted"], padx=18, pady=10,
+                command=lambda cid=c["id"]: self._mostrar_cliente(cid)
             )
-            btn.pack(fill="x", pady=3)
+            btn.pack(fill="x", pady=(2, 3), padx=(0, 4))
             for evento in ("<MouseWheel>", "<Button-4>", "<Button-5>"):
                 btn.bind(evento, self._rolar_clientes)
             self._botoes_cliente[c["id"]] = btn
@@ -782,25 +751,26 @@ class BalancaApp:
         if not pesagens:
             texto = "Nenhuma pesagem neste período." if (de or ate) else "Este cliente ainda não tem pesagens."
             tk.Label(
-                self.area_pesagens_cliente, text=texto, bg=TEMA["fundo"], fg=TEMA["muted"],
-                font=("Segoe UI Semibold", 10)
+                self.area_pesagens_cliente, text=texto, bg=TEMA["fundo"], fg=TEMA["muted"], font=(FONTE, 10)
             ).pack(anchor="w", pady=8)
 
         for reg in pesagens:
-            card = tk.Frame(self.area_pesagens_cliente, bg=TEMA["painel"])
-            card.pack(fill="x", pady=3)
+            cartao = CartaoArredondado(
+                self.area_pesagens_cliente, raio=14, padx=16, pady=10, ajustar=True
+            )
+            cartao.pack(fill="x", pady=(2, 3), padx=(0, 4))
             tk.Label(
-                card, text=f"{reg['data']}   •   R$ {reg['total']:.2f}", bg=TEMA["painel"],
-                fg=TEMA["texto"], font=("Segoe UI Semibold", 10), anchor="w", padx=12
-            ).pack(fill="x", pady=(10, 4))
+                cartao.interior, text=f"{reg['data']}   •   R$ {reg['total']:.2f}", bg=TEMA["painel"],
+                fg=TEMA["texto"], font=(FONTE, 10), anchor="w"
+            ).pack(fill="x", pady=(0, 4))
             linhas = "\n".join(
                 f"{item['nome']:<10} {item['peso']:>7.2f} kg   R$ {item['valor']:>8.2f}" for item in reg["itens"]
             )
             tk.Label(
-                card, text=linhas, bg=TEMA["painel"], fg=TEMA["muted"], font=("Consolas", 9),
-                anchor="w", justify="left", padx=12
-            ).pack(fill="x", pady=(0, 10))
-            self._ligar_rolagem(card, self._rolar_pesagens)
+                cartao.interior, text=linhas, bg=TEMA["painel"], fg=TEMA["muted"], font=(FONTE_MONO, 9),
+                anchor="w", justify="left"
+            ).pack(fill="x")
+            self._ligar_rolagem(cartao, self._rolar_pesagens)
 
         total = sum(reg["total"] for reg in pesagens)
         self.lbl_resumo.configure(text=f"{len(pesagens)} pesagem(ns)   •   Total: R$ {total:.2f}")
@@ -810,23 +780,26 @@ class BalancaApp:
         janela = tk.Toplevel(self.root)
         janela.title("Novo cliente")
         janela.configure(bg=TEMA["fundo"])
-        janela.geometry("360x470")
+        janela.geometry("400x580")
         janela.resizable(False, False)
         janela.transient(self.root)
         janela.grab_set()
 
-        container = ttk.Frame(janela, padding=20)
-        container.pack(fill="both", expand=True)
-        ttk.Label(container, text="Cadastro de cliente", style="Titulo.TLabel").pack(anchor="w", pady=(0, 6))
+        container = tk.Frame(janela, bg=TEMA["fundo"])
+        container.pack(fill="both", expand=True, padx=24, pady=22)
+        tk.Label(
+            container, text="Cadastro de cliente", bg=TEMA["fundo"], fg=TEMA["texto"], font=(FONTE, 16, "bold")
+        ).pack(anchor="w", pady=(0, 4))
 
         def campo(rotulo):
-            ttk.Label(container, text=rotulo, style="Muted.TLabel").pack(anchor="w", pady=(8, 3))
-            entrada = tk.Entry(
-                container, font=("Segoe UI Semibold", 11), bg=TEMA["painel"], fg=TEMA["texto"],
-                insertbackground=TEMA["texto"], relief="flat"
+            tk.Label(container, text=rotulo, bg=TEMA["fundo"], fg=TEMA["muted"], font=(FONTE, 9)).pack(
+                anchor="w", pady=(10, 4)
             )
-            entrada.pack(fill="x", ipady=6)
-            return entrada
+            entrada = EntradaArredondada(
+                container, fundo_pai=TEMA["fundo"], bg=TEMA["painel"], font=(FONTE, 11), raio=999, pady=8
+            )
+            entrada.pack(fill="x")
+            return entrada.entry
 
         e_nome = campo("Nome completo")
         e_numero = campo("Número (telefone com DDD)")
@@ -834,8 +807,8 @@ class BalancaApp:
         e_email = campo("E-mail (opcional)")
 
         lbl_erro = tk.Label(
-            container, text="", bg=TEMA["fundo"], fg=TEMA["erro"], font=("Segoe UI Semibold", 9),
-            anchor="w", justify="left", wraplength=310
+            container, text="", bg=TEMA["fundo"], fg=TEMA["erro"], font=(FONTE, 9),
+            anchor="w", justify="left", wraplength=340
         )
         lbl_erro.pack(fill="x", pady=(10, 0))
 
@@ -851,14 +824,10 @@ class BalancaApp:
             if ao_salvar:
                 ao_salvar(cliente)
 
-        tk.Button(
-            container, text="Salvar cliente", font=("Segoe UI Semibold", 11, "bold"),
-            bg=TEMA["destaque"], fg=TEMA["sobre_destaque"], relief="flat", padx=10, pady=10, command=salvar
-        ).pack(fill="x", pady=(14, 6))
-        tk.Button(
-            container, text="Cancelar", font=("Segoe UI Semibold", 9),
-            bg=TEMA["fundo"], fg=TEMA["muted"], relief="flat", padx=6, pady=6, command=janela.destroy
-        ).pack(fill="x")
+        botao_cheio(container, "Salvar cliente", salvar, pady=11, fonte=(FONTE, 11, "bold")).pack(
+            fill="x", pady=(14, 6)
+        )
+        botao_contorno(container, "Cancelar", janela.destroy).pack(fill="x")
 
         janela.bind("<Return>", lambda e: salvar())
         e_nome.focus_set()
