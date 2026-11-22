@@ -56,29 +56,42 @@ class BalancaApp:
             selectbackground=[("readonly", TEMA["painel"])],
             selectforeground=[("readonly", TEMA["texto"])],
         )
+        style.configure(
+            "Vertical.TScrollbar", troughcolor=TEMA["fundo"], background=TEMA["linha"],
+            bordercolor=TEMA["fundo"], arrowcolor=TEMA["muted"],
+            lightcolor=TEMA["linha"], darkcolor=TEMA["linha"]
+        )
+        style.map("Vertical.TScrollbar", background=[("active", TEMA["muted"])])
         self.root.option_add("*TCombobox*Listbox.background", TEMA["painel"])
         self.root.option_add("*TCombobox*Listbox.foreground", TEMA["texto"])
-        self.root.option_add("*TCombobox*Listbox.selectBackground", TEMA["cobre"])
-        self.root.option_add("*TCombobox*Listbox.selectForeground", TEMA["fundo"])
+        self.root.option_add("*TCombobox*Listbox.selectBackground", TEMA["destaque"])
+        self.root.option_add("*TCombobox*Listbox.selectForeground", TEMA["sobre_destaque"])
         self.root.option_add("*TCombobox*Listbox.font", "{Segoe UI Semibold} 10")
 
     # ---------- Estrutura em abas ----------
     def _montar_abas(self):
-        cabecalho = ttk.Frame(self.root, padding=(20, 16, 20, 0))
+        cabecalho = tk.Frame(self.root, bg=TEMA["cabecalho"])
         cabecalho.pack(fill="x")
 
-        linha_topo = ttk.Frame(cabecalho)
-        linha_topo.pack(fill="x")
-        titulo_box = ttk.Frame(linha_topo)
+        linha_topo = tk.Frame(cabecalho, bg=TEMA["cabecalho"])
+        linha_topo.pack(fill="x", padx=20, pady=14)
+        titulo_box = tk.Frame(linha_topo, bg=TEMA["cabecalho"])
         titulo_box.pack(side="left")
-        ttk.Label(titulo_box, text="Balança de Materiais", style="Titulo.TLabel").pack(anchor="w")
+        tk.Label(
+            titulo_box, text="Balança de Materiais", bg=TEMA["cabecalho"], fg=TEMA["sobre_destaque"],
+            font=("Segoe UI Semibold", 16, "bold")
+        ).pack(anchor="w")
         subtitulo = f"Empresa: {self.empresa}" if self.empresa else "Pese, calcule e acompanhe o histórico das suas pesagens."
-        ttk.Label(titulo_box, text=subtitulo, style="Muted.TLabel").pack(anchor="w", pady=(2, 10))
+        tk.Label(
+            titulo_box, text=subtitulo, bg=TEMA["cabecalho"], fg=TEMA["cabecalho_sub"],
+            font=("Segoe UI Semibold", 9)
+        ).pack(anchor="w", pady=(2, 0))
 
         if self.ao_sair:
             tk.Button(
-                linha_topo, text="Sair", font=("Segoe UI Semibold", 9),
-                bg=TEMA["fundo"], fg=TEMA["muted"], relief="flat", padx=10, pady=6,
+                linha_topo, text="Sair", font=("Segoe UI Semibold", 9, "bold"),
+                bg=TEMA["cabecalho_botao"], fg=TEMA["sobre_destaque"], relief="flat", padx=16, pady=6,
+                activebackground=TEMA["destaque"], activeforeground=TEMA["sobre_destaque"], cursor="hand2",
                 command=self._sair
             ).pack(side="right")
 
@@ -87,7 +100,7 @@ class BalancaApp:
         self.animando = False
 
         barra_abas = tk.Frame(self.root, bg=TEMA["fundo"])
-        barra_abas.pack(fill="x", padx=20, pady=(4, 0))
+        barra_abas.pack(fill="x", padx=20, pady=(10, 0))
 
         self.botoes_aba = []
         for i, nome in enumerate(self.abas_nomes):
@@ -101,7 +114,7 @@ class BalancaApp:
             btn.pack(side="left")
             self.botoes_aba.append(btn)
 
-        self.linha_indicador = tk.Frame(barra_abas, bg=TEMA["cobre"], height=2)
+        self.linha_indicador = tk.Frame(barra_abas, bg=TEMA["destaque"], height=2)
         self.linha_indicador.place(x=0, y=34, width=90, height=2)
 
         # Área de conteúdo: dois painéis sobrepostos, deslizam ao trocar de aba
@@ -201,8 +214,8 @@ class BalancaApp:
         ttk.Label(cabecalho_materiais, text="Materiais", style="Muted.TLabel").pack(side="left")
         tk.Button(
             cabecalho_materiais, text="Editar preços", font=("Segoe UI Semibold", 8, "underline"),
-            bg=TEMA["fundo"], fg=TEMA["cobre"], relief="flat", bd=0, cursor="hand2",
-            activebackground=TEMA["fundo"], activeforeground=TEMA["cobre"],
+            bg=TEMA["fundo"], fg=TEMA["destaque"], relief="flat", bd=0, cursor="hand2",
+            activebackground=TEMA["fundo"], activeforeground=TEMA["destaque"],
             command=self.abrir_edicao_precos
         ).pack(side="right")
 
@@ -256,7 +269,7 @@ class BalancaApp:
         self.lbl_material.pack(pady=(10, 6))
 
         self.lbl_peso_visor = tk.Label(
-            frame, text="0.00 kg", bg=TEMA["painel"], fg=TEMA["cobre"], font=("Consolas", 32, "bold")
+            frame, text="0.00 kg", bg=TEMA["painel"], fg=TEMA["destaque"], font=("Consolas", 32, "bold")
         )
         self.lbl_peso_visor.pack(pady=(0, 16))
 
@@ -276,8 +289,9 @@ class BalancaApp:
 
         self.btn_adicionar = tk.Button(
             frame, text="Adicionar à pesagem", font=("Segoe UI Semibold", 11, "bold"),
-            bg=TEMA["cobre"], fg="#1a1300", relief="flat", padx=10, pady=10,
-            state="disabled", command=self.adicionar_item
+            bg=TEMA["desabilitado"], fg=TEMA["sobre_destaque"], disabledforeground=TEMA["texto_desabilitado"],
+            activebackground=TEMA["total"], activeforeground=TEMA["sobre_destaque"],
+            relief="flat", padx=10, pady=10, state="disabled", command=self.adicionar_item
         )
         self.btn_adicionar.pack(fill="x")
 
@@ -292,8 +306,8 @@ class BalancaApp:
         ttk.Label(linha_cliente, text="Cliente (opcional)", style="Muted.TLabel").pack(side="left")
         tk.Button(
             linha_cliente, text="+ Novo", font=("Segoe UI Semibold", 8, "underline"),
-            bg=TEMA["fundo"], fg=TEMA["cobre"], relief="flat", bd=0, cursor="hand2",
-            activebackground=TEMA["fundo"], activeforeground=TEMA["cobre"],
+            bg=TEMA["fundo"], fg=TEMA["destaque"], relief="flat", bd=0, cursor="hand2",
+            activebackground=TEMA["fundo"], activeforeground=TEMA["destaque"],
             command=lambda: self.abrir_cadastro_cliente(ao_salvar=self._selecionar_cliente_na_pesagem)
         ).pack(side="right")
         self.combo_cliente = ttk.Combobox(frame, state="readonly", font=("Segoe UI Semibold", 10))
@@ -302,7 +316,7 @@ class BalancaApp:
 
         self.lista_ticket = tk.Listbox(
             frame, height=4, bg=TEMA["fundo"], fg=TEMA["texto"], relief="flat",
-            font=("Consolas", 10), highlightthickness=0, selectbackground=TEMA["painel"]
+            font=("Consolas", 10), highlightthickness=0, selectbackground=TEMA["painel_ativo"], selectforeground=TEMA["texto"]
         )
         self.lista_ticket.pack(fill="both", expand=True)
 
@@ -322,19 +336,19 @@ class BalancaApp:
 
         tk.Button(
             frame, text="Finalizar e salvar no histórico", font=("Segoe UI Semibold", 9, "bold"),
-            bg=TEMA["total"], fg="#122016", relief="flat", padx=6, pady=8,
+            bg=TEMA["total"], fg=TEMA["sobre_destaque"], relief="flat", padx=6, pady=8,
             command=self.finalizar_pesagem
         ).pack(fill="x", pady=(0, 4))
 
         tk.Button(
             frame, text="Gerar relatório (.txt)", font=("Segoe UI Semibold", 9),
-            bg=TEMA["fundo"], fg=TEMA["muted"], relief="flat", padx=6, pady=6,
+            bg=TEMA["painel"], fg=TEMA["muted"], relief="flat", padx=6, pady=6,
             highlightbackground=TEMA["linha"], command=self.gerar_relatorio_atual
         ).pack(fill="x", pady=(0, 4))
 
         tk.Button(
             frame, text="Limpar pesagem", font=("Segoe UI Semibold", 9),
-            bg=TEMA["fundo"], fg=TEMA["muted"], relief="flat", padx=6, pady=6,
+            bg=TEMA["painel"], fg=TEMA["muted"], relief="flat", padx=6, pady=6,
             highlightbackground=TEMA["linha"], command=self.limpar_pesagem
         ).pack(fill="x")
 
@@ -500,7 +514,7 @@ class BalancaApp:
             entrada.pack(side="right", ipady=4)
             entradas[m["nome"]] = entrada
 
-        lbl_erro = tk.Label(container, text="", bg=TEMA["fundo"], fg="#c96b5c", font=("Segoe UI Semibold", 9))
+        lbl_erro = tk.Label(container, text="", bg=TEMA["fundo"], fg=TEMA["erro"], font=("Segoe UI Semibold", 9))
         lbl_erro.pack(anchor="w", pady=(10, 0))
 
         def salvar():
@@ -521,7 +535,7 @@ class BalancaApp:
 
         tk.Button(
             container, text="Salvar", font=("Segoe UI Semibold", 11, "bold"),
-            bg=TEMA["cobre"], fg="#1a1300", relief="flat", padx=10, pady=10,
+            bg=TEMA["destaque"], fg=TEMA["sobre_destaque"], relief="flat", padx=10, pady=10,
             command=salvar
         ).pack(fill="x", pady=(16, 6))
         tk.Button(
@@ -600,7 +614,7 @@ class BalancaApp:
         ttk.Label(topo, text="Clientes cadastrados", style="Muted.TLabel").pack(side="left")
         tk.Button(
             topo, text="+ Novo cliente", font=("Segoe UI Semibold", 9, "bold"),
-            bg=TEMA["cobre"], fg="#1a1300", relief="flat", padx=10, pady=4, cursor="hand2",
+            bg=TEMA["destaque"], fg=TEMA["sobre_destaque"], relief="flat", padx=10, pady=4, cursor="hand2",
             command=lambda: self.abrir_cadastro_cliente(ao_salvar=self._selecionar_cliente_na_lista)
         ).pack(side="right")
         self.area_lista_clientes, self._rolar_clientes = self._criar_area_rolavel(frame, coluna=0)
@@ -644,7 +658,7 @@ class BalancaApp:
 
         tk.Button(
             interno, text="Filtrar", font=("Segoe UI Semibold", 9, "bold"),
-            bg=TEMA["cobre"], fg="#1a1300", relief="flat", padx=10, pady=3, cursor="hand2",
+            bg=TEMA["destaque"], fg=TEMA["sobre_destaque"], relief="flat", padx=10, pady=3, cursor="hand2",
             command=self._renderizar_pesagens_cliente
         ).pack(side="left", padx=(0, 6))
         tk.Button(
@@ -749,7 +763,7 @@ class BalancaApp:
 
         de, ate, erro = self._ler_periodo()
         if erro:
-            self.lbl_filtro_msg.configure(text=erro, fg="#c96b5c")
+            self.lbl_filtro_msg.configure(text=erro, fg=TEMA["erro"])
         else:
             self.lbl_filtro_msg.configure(text=self._msg_filtro, fg=TEMA["muted"])
 
@@ -820,7 +834,7 @@ class BalancaApp:
         e_email = campo("E-mail (opcional)")
 
         lbl_erro = tk.Label(
-            container, text="", bg=TEMA["fundo"], fg="#c96b5c", font=("Segoe UI Semibold", 9),
+            container, text="", bg=TEMA["fundo"], fg=TEMA["erro"], font=("Segoe UI Semibold", 9),
             anchor="w", justify="left", wraplength=310
         )
         lbl_erro.pack(fill="x", pady=(10, 0))
@@ -839,7 +853,7 @@ class BalancaApp:
 
         tk.Button(
             container, text="Salvar cliente", font=("Segoe UI Semibold", 11, "bold"),
-            bg=TEMA["cobre"], fg="#1a1300", relief="flat", padx=10, pady=10, command=salvar
+            bg=TEMA["destaque"], fg=TEMA["sobre_destaque"], relief="flat", padx=10, pady=10, command=salvar
         ).pack(fill="x", pady=(14, 6))
         tk.Button(
             container, text="Cancelar", font=("Segoe UI Semibold", 9),
@@ -869,10 +883,10 @@ class BalancaApp:
         if self.material_selecionado and peso > 0:
             valor = peso * self.material_selecionado["preco"]
             self.lbl_valor.configure(text=f"Valor: R$ {valor:.2f}")
-            self.btn_adicionar.configure(state="normal")
+            self.btn_adicionar.configure(state="normal", bg=TEMA["destaque"], cursor="hand2")
         else:
             self.lbl_valor.configure(text="Valor: R$ 0,00")
-            self.btn_adicionar.configure(state="disabled")
+            self.btn_adicionar.configure(state="disabled", bg=TEMA["desabilitado"], cursor="arrow")
 
     def adicionar_item(self):
         texto = self.entry_peso.get().replace(",", ".")

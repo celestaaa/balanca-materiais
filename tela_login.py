@@ -17,7 +17,7 @@ class TelaLogin(tk.Tk):
 
         self.title("Balança de Materiais — Acesso")
         self.configure(bg=TEMA["fundo"])
-        self.geometry("380x460")
+        self.geometry("380x600")
         self.resizable(False, False)
 
         self._montar_estilo()
@@ -30,9 +30,20 @@ class TelaLogin(tk.Tk):
         style.configure("TLabel", background=TEMA["fundo"], foreground=TEMA["texto"], font=("Segoe UI Semibold", 10))
         style.configure("Muted.TLabel", background=TEMA["fundo"], foreground=TEMA["muted"], font=("Segoe UI Semibold", 9))
         style.configure("Titulo.TLabel", background=TEMA["fundo"], foreground=TEMA["texto"], font=("Segoe UI Semibold", 16, "bold"))
-        style.configure("Erro.TLabel", background=TEMA["fundo"], foreground="#c96b5c", font=("Segoe UI Semibold", 9))
+        style.configure("Erro.TLabel", background=TEMA["fundo"], foreground=TEMA["erro"], font=("Segoe UI Semibold", 9))
 
     def _montar_layout(self):
+        faixa = tk.Frame(self, bg=TEMA["cabecalho"])
+        faixa.pack(fill="x")
+        tk.Label(
+            faixa, text="Balança de Materiais", bg=TEMA["cabecalho"], fg=TEMA["sobre_destaque"],
+            font=("Segoe UI Semibold", 17, "bold")
+        ).pack(anchor="w", padx=28, pady=(24, 2))
+        tk.Label(
+            faixa, text="Pesagem e cotação de materiais", bg=TEMA["cabecalho"], fg=TEMA["cabecalho_sub"],
+            font=("Segoe UI Semibold", 9)
+        ).pack(anchor="w", padx=28, pady=(0, 20))
+
         self.container = ttk.Frame(self, padding=28)
         self.container.pack(fill="both", expand=True)
         self._renderizar()
@@ -54,12 +65,14 @@ class TelaLogin(tk.Tk):
     def _renderizar(self):
         self._limpar_container()
         if self.modo == "login":
+            self.geometry("380x520")
             self._renderizar_login()
         else:
+            self.geometry("380x690")
             self._renderizar_cadastro()
 
     def _renderizar_login(self):
-        ttk.Label(self.container, text="Balança de Materiais", style="Titulo.TLabel").pack(anchor="w")
+        ttk.Label(self.container, text="Acessar conta", style="Titulo.TLabel").pack(anchor="w")
         ttk.Label(self.container, text="Entre com a conta da sua empresa.", style="Muted.TLabel").pack(anchor="w", pady=(2, 0))
 
         self.entry_usuario = self._campo("Usuário")
@@ -70,7 +83,7 @@ class TelaLogin(tk.Tk):
 
         tk.Button(
             self.container, text="Entrar", font=("Segoe UI Semibold", 11, "bold"),
-            bg=TEMA["cobre"], fg="#1a1300", relief="flat", padx=10, pady=10,
+            bg=TEMA["destaque"], fg=TEMA["sobre_destaque"], relief="flat", padx=10, pady=10,
             command=self._tentar_login
         ).pack(fill="x", pady=(16, 6))
 
@@ -113,7 +126,7 @@ class TelaLogin(tk.Tk):
 
         tk.Button(
             self.container, text="Criar conta", font=("Segoe UI Semibold", 11, "bold"),
-            bg=TEMA["total"], fg="#122016", relief="flat", padx=10, pady=10,
+            bg=TEMA["total"], fg=TEMA["sobre_destaque"], relief="flat", padx=10, pady=10,
             command=self._tentar_cadastrar
         ).pack(fill="x", pady=(16, 6))
 
