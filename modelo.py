@@ -25,6 +25,7 @@ class Ticket:
     def __init__(self):
         self.itens: list[ItemPesagem] = []
         self.cliente: str = ""
+        self.cliente_id = None
 
     def adicionar(self, nome: str, peso: float, preco: float) -> ItemPesagem:
         item = ItemPesagem(nome=nome, peso=peso, preco=preco)
@@ -38,6 +39,7 @@ class Ticket:
     def limpar(self):
         self.itens.clear()
         self.cliente = ""
+        self.cliente_id = None
 
     @property
     def total(self) -> float:
@@ -49,6 +51,7 @@ class Ticket:
     def to_dict(self) -> dict:
         return {
             "cliente": self.cliente,
+            "cliente_id": self.cliente_id,
             "itens": [item.to_dict() for item in self.itens],
             "total": self.total,
         }
