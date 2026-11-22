@@ -260,6 +260,13 @@ class BalancaApp:
 
         ttk.Label(frame, text="Pesagem atual", style="Muted.TLabel").pack(anchor="w", pady=(0, 8))
 
+        ttk.Label(frame, text="Cliente (opcional)", style="Muted.TLabel").pack(anchor="w", pady=(0, 4))
+        self.entry_cliente = tk.Entry(
+            frame, font=("Segoe UI Semibold", 10), bg=TEMA["painel"], fg=TEMA["texto"],
+            insertbackground=TEMA["texto"], relief="flat"
+        )
+        self.entry_cliente.pack(fill="x", ipady=6, pady=(0, 10))
+
         self.lista_ticket = tk.Listbox(
             frame, bg=TEMA["fundo"], fg=TEMA["texto"], relief="flat",
             font=("Consolas", 10), highlightthickness=0, selectbackground=TEMA["painel"]
@@ -375,9 +382,10 @@ class BalancaApp:
 
         for idx, reg in enumerate(registros):
             qtd_itens = len(reg["itens"])
+            cliente = reg.get("cliente") or "Cliente não informado"
             btn = tk.Button(
                 self.area_lista_historico,
-                text=f"{reg['data']}\n{qtd_itens} item(ns)  •  R$ {reg['total']:.2f}",
+                text=f"{cliente}\n{reg['data']}\n{qtd_itens} item(ns)  •  R$ {reg['total']:.2f}",
                 font=("Segoe UI Semibold", 10), bg=TEMA["painel"], fg=TEMA["texto"],
                 activebackground=TEMA["painel_ativo"], activeforeground=TEMA["texto"],
                 relief="flat", bd=0, justify="left", anchor="w", padx=12, pady=10,
@@ -574,8 +582,13 @@ class BalancaApp:
         )
         if not confirmar:
             return
+        self._resetar_pesagem()
+
+    def _resetar_pesagem(self):
+        """Zera a pesagem atual (itens e nome do cliente), sem pedir confirmação."""
         self.ticket.limpar()
         self.lista_ticket.delete(0, "end")
+        self.entry_cliente.delete(0, "end")
         self._atualizar_total_visor()
 
     def _atualizar_total_visor(self):
@@ -585,17 +598,19 @@ class BalancaApp:
         if self.ticket.esta_vazio():
             messagebox.showinfo("Finalizar pesagem", "Adicione ao menos um item antes de finalizar.")
             return
+        self.ticket.cliente = self.entry_cliente.get().strip()
         registro = self.historico.registrar(self.ticket)
         self.atualizar_historico()
         messagebox.showinfo(
             "Pesagem salva", f"Pesagem de R$ {registro['total']:.2f} salva no histórico."
         )
-        self.limpar_pesagem()
+        self._resetar_pesagem()
 
     def gerar_relatorio_atual(self):
         if self.ticket.esta_vazio():
             messagebox.showinfo("Gerar relatório", "Adicione ao menos um item antes de gerar o relatório.")
             return
+        self.ticket.cliente = self.entry_cliente.get().strip()
         caminho = gerar_relatorio(self.ticket)
         messagebox.showinfo("Relatório gerado", f"Relatório salvo em:\n{caminho}")
 

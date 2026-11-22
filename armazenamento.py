@@ -57,6 +57,8 @@ def gerar_relatorio(ticket: Ticket) -> str:
     linhas = []
     linhas.append("BALANÇA DE MATERIAIS - RELATÓRIO DE PESAGEM")
     linhas.append(f"Data/hora: {agora.strftime('%d/%m/%Y %H:%M')}")
+    if ticket.cliente:
+        linhas.append(f"Cliente: {ticket.cliente}")
     linhas.append("-" * 44)
     for item in ticket.itens:
         linhas.append(
