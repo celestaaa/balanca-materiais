@@ -1,6 +1,9 @@
 """Paleta de cores e funções de desenho do visual moderno (cantos arredondados, sombra e ícones)."""
 
-TEMA = {
+import json
+import os
+
+PALETA_CLARA = {
     # Base: cinza claro e branco
     "fundo": "#EEF2F8",
     "painel": "#FFFFFF",
@@ -14,9 +17,11 @@ TEMA = {
     # Azul
     "destaque": "#2563EB",
     "destaque_hover": "#1D4ED8",
-    "destaque_claro": "#D3E2FB",
-    "destaque_escuro": "#1E3A8A",
-    "total": "#1E40AF",
+    "destaque_texto": "#2563EB",     # azul usado em textos grandes (ex.: peso no visor)
+    "destaque_claro": "#D3E2FB",     # aba ativa, cartão de resumo
+    "destaque_escuro": "#1E3A8A",    # texto sobre o destaque_claro
+    "total": "#1E40AF",              # valores em R$
+    "botao_forte": "#1E40AF",        # botão azul-escuro (ex.: Finalizar)
     "sobre_destaque": "#FFFFFF",
     # Cabeçalho (degradê da esquerda para a direita)
     "cabecalho_ini": "#2A4DB0",
@@ -27,6 +32,75 @@ TEMA = {
     "texto_desabilitado": "#8896AB",
     "erro": "#D93636",
 }
+
+PALETA_ESCURA = {
+    # Base: azul-marinho profundo e cinza-azulado
+    "fundo": "#0F172A",
+    "painel": "#1E293B",
+    "painel_ativo": "#27447A",
+    "campo": "#152033",
+    "linha": "#334155",
+    "sombra": "#000000",
+    # Texto
+    "texto": "#E6EBF4",
+    "muted": "#9AA8BD",
+    # Azul
+    "destaque": "#3069E0",
+    "destaque_hover": "#2557C4",
+    "destaque_texto": "#6EA2FF",
+    "destaque_claro": "#1F3A6B",
+    "destaque_escuro": "#BCD3FF",
+    "total": "#8DB8FF",
+    "botao_forte": "#2F5FD6",
+    "sobre_destaque": "#FFFFFF",
+    # Cabeçalho
+    "cabecalho_ini": "#2447A8",
+    "cabecalho_fim": "#0F1F5E",
+    "cabecalho_sub": "#C7D7F7",
+    # Estados
+    "desabilitado": "#334155",
+    "texto_desabilitado": "#6B7A90",
+    "erro": "#F87171",
+}
+
+PALETAS = {"claro": PALETA_CLARA, "escuro": PALETA_ESCURA}
+
+# TEMA é um dicionário único, compartilhado por todos os arquivos. Ao trocar de tema o conteúdo
+# dele é substituído "no lugar", então quem já importou o TEMA passa a enxergar as cores novas.
+TEMA = {}
+_tema_atual = "claro"
+_ARQUIVO_CONFIG = os.path.join(os.path.dirname(os.path.abspath(__file__)), "dados", "config.json")
+
+
+def tema_atual() -> str:
+    return _tema_atual
+
+
+def aplicar_tema(nome: str):
+    global _tema_atual
+    _tema_atual = nome if nome in PALETAS else "claro"
+    TEMA.clear()
+    TEMA.update(PALETAS[_tema_atual])
+
+
+def salvar_preferencia_tema(nome: str):
+    try:
+        os.makedirs(os.path.dirname(_ARQUIVO_CONFIG), exist_ok=True)
+        with open(_ARQUIVO_CONFIG, "w", encoding="utf-8") as f:
+            json.dump({"tema": nome}, f)
+    except OSError:
+        pass  # sem permissão de escrita: o tema vale só nesta sessão
+
+
+def carregar_preferencia_tema() -> str:
+    try:
+        with open(_ARQUIVO_CONFIG, "r", encoding="utf-8") as f:
+            return json.load(f).get("tema", "claro")
+    except (OSError, json.JSONDecodeError, AttributeError):
+        return "claro"
+
+
+aplicar_tema(carregar_preferencia_tema())  # abre já no último modo escolhido
 
 FONTE = "Segoe UI Semibold"
 FONTE_MONO = "Consolas"
@@ -113,6 +187,12 @@ def desenhar_icone(canvas, nome, x, y, cor, tag="icone"):
         linha(6, 2, 2, 2, 2, 12, 6, 12)
         linha(5, 7, 12, 7)
         linha(9.5, 4, 12.5, 7, 9.5, 10)
+    elif nome == "tema":
+        canvas.create_oval(x + 1.5, y + 1.5, x + 12.5, y + 12.5, outline=cor, width=1.6, tags=tag)
+        canvas.create_arc(
+            x + 1.5, y + 1.5, x + 12.5, y + 12.5, start=90, extent=180, style="pieslice",
+            fill=cor, outline=cor, tags=tag
+        )
     elif nome == "atualizar":
         linha(11.5, 5, 10, 2.5, 7, 1.8, 3.5, 3.5, 2, 7, 3.5, 10.5, 7, 12.2, 10, 11.5, 11.8, 9)
         linha(11.8, 1.8, 11.5, 5, 8.3, 4.6)

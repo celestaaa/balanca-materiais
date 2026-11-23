@@ -123,7 +123,7 @@ class TelaLogin(tk.Tk):
         self.lbl_erro = ttk.Label(self.container, text="", style="Erro.TLabel")
         self.lbl_erro.pack(anchor="w", pady=(10, 0))
 
-        self._botao_principal("Criar conta", self._tentar_cadastrar, TEMA["total"]).pack(fill="x", pady=(14, 8))
+        self._botao_principal("Criar conta", self._tentar_cadastrar, TEMA["botao_forte"]).pack(fill="x", pady=(14, 8))
         self._botao_secundario("Já tenho conta — Entrar", self._ir_para_login).pack(fill="x")
 
         self.bind("<Return>", lambda e: self._tentar_cadastrar())

@@ -82,8 +82,11 @@ class BotaoArredondado(tk.Canvas):
     def _cor_hover(self):
         if self._hover:
             return self._hover
-        if luminosidade(self._bg) > 0.6:
+        brilho = luminosidade(self._bg)
+        if brilho > 0.6:
             return misturar(self._bg, TEMA["destaque"], 0.10)
+        if brilho < 0.25:
+            return misturar(self._bg, "#FFFFFF", 0.09)
         return misturar(self._bg, "#000000", 0.15)
 
     def _desenhar(self):
@@ -153,6 +156,12 @@ class BotaoArredondado(tk.Canvas):
     def invoke(self):
         if self._estado == "normal" and self._comando:
             self._comando()
+
+    def definir_fundo_pai(self, cor):
+        """Muda a cor de trás do botão (para combinar com o que está ao redor)."""
+        self._fundo_pai = cor
+        tk.Canvas.configure(self, bg=cor)
+        self._desenhar()
 
     # ---------- interface parecida com a de um tk.Button ----------
     def configure(self, cnf=None, **kw):
@@ -336,7 +345,7 @@ class CabecalhoDegrade(tk.Canvas):
     """Faixa de topo com degradê azul, cantos arredondados, título, subtítulo e botão "Sair"."""
 
     def __init__(self, master, titulo, subtitulo="", ao_sair=None, fundo_pai=None,
-                 altura=80, raio=22):
+                 altura=80, raio=22, ao_tema=None, texto_tema=""):
         super().__init__(
             master, bg=fundo_pai or TEMA["fundo"], highlightthickness=0, bd=0, height=altura
         )
@@ -347,6 +356,8 @@ class CabecalhoDegrade(tk.Canvas):
         self._pendente = None
         self._botao = None
         self._janela_botao = None
+        self._botao_tema = None
+        self._janela_tema = None
 
         if ao_sair:
             cor_local = TEMA["cabecalho_fim"]
@@ -357,6 +368,15 @@ class CabecalhoDegrade(tk.Canvas):
                 hover=misturar(cor_local, "#FFFFFF", 0.18)
             )
             self._janela_botao = self.create_window(0, 0, window=self._botao, anchor="e")
+        if ao_tema:
+            cor_local = TEMA["cabecalho_fim"]
+            self._botao_tema = BotaoArredondado(
+                self, text=texto_tema, command=ao_tema, bg=cor_local, fg="#FFFFFF",
+                fundo_pai=cor_local, borda=misturar(cor_local, "#FFFFFF", 0.75), raio=999,
+                font=(FONTE, 9, "bold"), icone="tema", padx=16, pady=7,
+                hover=misturar(cor_local, "#FFFFFF", 0.18)
+            )
+            self._janela_tema = self.create_window(0, 0, window=self._botao_tema, anchor="e")
         self.bind("<Configure>", self._agendar)
 
     def _agendar(self, _evento=None):
@@ -365,7 +385,10 @@ class CabecalhoDegrade(tk.Canvas):
 
     def _desenhar(self):
         self._pendente = None
-        largura, altura = self.winfo_width(), self.winfo_height()
+        try:
+            largura, altura = self.winfo_width(), self.winfo_height()
+        except tk.TclError:
+            return  # o cabeçalho foi destruído (ex.: troca de tema)
         if largura <= 2:
             return
         self.delete("degrade")
@@ -394,5 +417,20 @@ class CabecalhoDegrade(tk.Canvas):
                 28, meio + 14, text=self._subtitulo, anchor="w",
                 font=(FONTE, 9), fill=TEMA["cabecalho_sub"], tags="texto"
             )
-        if self._janela_botao is not None:
-            self.coords(self._janela_botao, largura - 24, meio)
+        # Botões da direita: cada um recebe a cor do degradê na posição onde está,
+        # para não aparecer uma "caixinha" de cor diferente atrás dele.
+        direita = largura - 24
+        for botao, janela in ((self._botao, self._janela_botao), (self._botao_tema, self._janela_tema)):
+            if botao is None:
+                continue
+            self.coords(janela, direita, meio)
+            centro = direita - botao._largura_req / 2
+            cor = misturar(
+                TEMA["cabecalho_ini"], TEMA["cabecalho_fim"],
+                max(0.0, min(1.0, centro / max(largura - 1, 1)))
+            )
+            botao.configure(
+                bg=cor, borda=misturar(cor, "#FFFFFF", 0.75), hover=misturar(cor, "#FFFFFF", 0.18)
+            )
+            botao.definir_fundo_pai(cor)
+            direita -= botao._largura_req + 10

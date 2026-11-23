@@ -5,7 +5,7 @@ from datetime import datetime
 from tkinter import ttk, messagebox
 
 from materiais import MATERIAIS
-from estilo import TEMA, FONTE, FONTE_MONO
+from estilo import TEMA, FONTE, FONTE_MONO, aplicar_tema, tema_atual, salvar_preferencia_tema
 from widgets import BotaoArredondado, CartaoArredondado, EntradaArredondada, CabecalhoDegrade
 from modelo import Ticket
 from armazenamento import GerenciadorHistorico, gerar_relatorio
@@ -106,7 +106,9 @@ class BalancaApp:
         subtitulo = f"Empresa: {self.empresa}" if self.empresa else "Pese, calcule e acompanhe suas pesagens."
         CabecalhoDegrade(
             self.root, "Balança de Materiais", subtitulo,
-            ao_sair=self._sair if self.ao_sair else None, fundo_pai=TEMA["fundo"]
+            ao_sair=self._sair if self.ao_sair else None, fundo_pai=TEMA["fundo"],
+            ao_tema=self.alternar_tema,
+            texto_tema="Modo escuro" if tema_atual() == "claro" else "Modo claro"
         ).pack(fill="x", padx=14, pady=(14, 0))
 
         self.abas_nomes = ["Pesagem", "Histórico", "Clientes"]
@@ -141,6 +143,73 @@ class BalancaApp:
         self._montar_aba_pesagem(aba_pesagem)
         self._montar_aba_historico(aba_historico)
         self._montar_aba_clientes(aba_clientes)
+
+    # ---------- Modo claro / escuro ----------
+    def alternar_tema(self):
+        # adia um instante: o botão clicado será destruído na reconstrução da tela
+        self.root.after(20, self._trocar_tema)
+
+    def _trocar_tema(self):
+        novo = "claro" if tema_atual() == "escuro" else "escuro"
+        aplicar_tema(novo)
+        salvar_preferencia_tema(novo)
+        self._reconstruir_interface()
+
+    def _capturar_estado(self):
+        """Guarda o que está na tela para voltar igual depois de trocar as cores."""
+        idx = self.combo_cliente.current()
+        return {
+            "aba": self.aba_atual,
+            "material": self.material_selecionado["nome"] if self.material_selecionado else None,
+            "peso": self.entry_peso.get(),
+            "cliente_combo": self._ids_combo[idx] if 0 < idx < len(self._ids_combo) else None,
+            "cliente_sel": self._cliente_sel_id,
+            "filtro_de": self.entry_data_de.get(),
+            "filtro_ate": self.entry_data_ate.get(),
+            "registro": self._indice_selecionado,
+        }
+
+    def _reconstruir_interface(self):
+        estado = self._capturar_estado()
+        for widget in self.root.winfo_children():
+            widget.destroy()
+        self.root.configure(bg=TEMA["fundo"])
+        self._botoes_cliente = {}
+        self._montar_estilo()
+        self._montar_abas()
+        self._restaurar_estado(estado)
+
+    def _restaurar_estado(self, estado):
+        # pesagem em andamento
+        for item in self.ticket.itens:
+            self.lista_ticket.insert("end", f"{item.nome:<10} {item.peso:>6.2f} kg   R$ {item.valor:>8.2f}")
+        self._atualizar_total_visor()
+        if estado["material"]:
+            material = next((m for m in self.precos.listar() if m["nome"] == estado["material"]), None)
+            if material:
+                self.selecionar_material(material)
+        self.entry_peso.insert(0, estado["peso"])
+        self.atualizar_calculo()
+        if estado["cliente_combo"]:
+            self._atualizar_combo_clientes(selecionar_id=estado["cliente_combo"])
+
+        # aba Clientes (cliente aberto e filtro de datas)
+        self.entry_data_de.insert(0, estado["filtro_de"])
+        self.entry_data_ate.insert(0, estado["filtro_ate"])
+        if estado["cliente_sel"]:
+            self._mostrar_cliente(estado["cliente_sel"])
+
+        # aba Histórico
+        if estado["registro"] is not None and estado["registro"] < len(self._botoes_registro):
+            self._selecionar_registro(estado["registro"])
+
+        # volta para a aba em que estava, sem animação
+        self.aba_atual = estado["aba"]
+        for i, painel in enumerate(self.paineis_aba):
+            relx = 0 if i == self.aba_atual else (-1 if i < self.aba_atual else 1)
+            painel.place(relx=relx, rely=0, relwidth=1, relheight=1)
+        self.paineis_aba[self.aba_atual].lift()
+        self._pintar_abas()
 
     def _pintar_abas(self):
         for i, btn in enumerate(self.botoes_aba):
@@ -230,7 +299,7 @@ class BalancaApp:
         self.lbl_material.pack(pady=(10, 6))
 
         self.lbl_peso_visor = tk.Label(
-            frame, text="0.00 kg", bg=TEMA["painel"], fg=TEMA["destaque"], font=(FONTE_MONO, 32, "bold")
+            frame, text="0.00 kg", bg=TEMA["painel"], fg=TEMA["destaque_texto"], font=(FONTE_MONO, 32, "bold")
         )
         self.lbl_peso_visor.pack(pady=(0, 16))
 
@@ -299,7 +368,7 @@ class BalancaApp:
 
         botao_contorno(frame, "Remover selecionado", self.remover_item, "lixeira").pack(fill="x", pady=(0, 6))
         botao_cheio(
-            frame, "Finalizar e salvar no histórico", self.finalizar_pesagem, "check", cor=TEMA["total"]
+            frame, "Finalizar e salvar no histórico", self.finalizar_pesagem, "check", cor=TEMA["botao_forte"]
         ).pack(fill="x", pady=(0, 6))
         botao_contorno(frame, "Gerar relatório (.txt)", self.gerar_relatorio_atual, "documento").pack(fill="x", pady=(0, 6))
         botao_contorno(frame, "Limpar pesagem", self.limpar_pesagem, "lixeira").pack(fill="x")
