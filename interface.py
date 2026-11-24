@@ -11,6 +11,7 @@ from modelo import Ticket
 from armazenamento import GerenciadorHistorico, gerar_relatorio
 from precos import GerenciadorPrecos
 from clientes import GerenciadorClientes, formatar_documento, formatar_telefone
+import impressao
 
 
 # ---------- Botões prontos (para manter o mesmo visual em todas as telas) ----------
@@ -104,11 +105,15 @@ class BalancaApp:
     # ---------- Estrutura em abas ----------
     def _montar_abas(self):
         subtitulo = f"Empresa: {self.empresa}" if self.empresa else "Pese, calcule e acompanhe suas pesagens."
+        botoes = []  # do mais à direita para o mais à esquerda
+        if self.ao_sair:
+            botoes.append(("Sair", "sair", self._sair))
+        botoes.append((
+            "Modo escuro" if tema_atual() == "claro" else "Modo claro", "tema", self.alternar_tema
+        ))
+        botoes.append(("Impressora", "impressora", self.abrir_config_impressao))
         CabecalhoDegrade(
-            self.root, "Balança de Materiais", subtitulo,
-            ao_sair=self._sair if self.ao_sair else None, fundo_pai=TEMA["fundo"],
-            ao_tema=self.alternar_tema,
-            texto_tema="Modo escuro" if tema_atual() == "claro" else "Modo claro"
+            self.root, "Balança de Materiais", subtitulo, botoes=botoes, fundo_pai=TEMA["fundo"]
         ).pack(fill="x", padx=14, pady=(14, 0))
 
         self.abas_nomes = ["Pesagem", "Histórico", "Clientes"]
@@ -429,9 +434,16 @@ class BalancaApp:
         tk.Label(
             frame, text="Pesagens finalizadas", bg=TEMA["fundo"], fg=TEMA["texto"], font=(FONTE, 11)
         ).grid(row=0, column=0, sticky="w", pady=(6, 8))
+        cabecalho_detalhe = tk.Frame(frame, bg=TEMA["fundo"])
+        cabecalho_detalhe.grid(row=0, column=1, sticky="ew", padx=(16, 0), pady=(6, 8))
         tk.Label(
-            frame, text="Itens da pesagem selecionada", bg=TEMA["fundo"], fg=TEMA["texto"], font=(FONTE, 11)
-        ).grid(row=0, column=1, sticky="w", padx=(16, 0), pady=(6, 8))
+            cabecalho_detalhe, text="Itens da pesagem selecionada", bg=TEMA["fundo"],
+            fg=TEMA["texto"], font=(FONTE, 11)
+        ).pack(side="left")
+        botao_contorno(
+            cabecalho_detalhe, "Imprimir nota", self.imprimir_nota_selecionada,
+            icone="impressora", pady=5, padx=12
+        ).pack(side="right")
 
         self.area_lista_historico, rolar_hist = self._criar_area_rolavel(frame, coluna=0)
         self.area_detalhe_historico, rolar_det = self._criar_area_rolavel(frame, coluna=1)
@@ -988,13 +1000,240 @@ class BalancaApp:
             messagebox.showinfo("Finalizar pesagem", "Adicione ao menos um item antes de finalizar.")
             return
         self._aplicar_cliente_no_ticket()
-        registro = self.historico.registrar(self.ticket)
+        self._abrir_confirmacao(datetime.now())
+
+    def _abrir_confirmacao(self, momento):
+        """Tela para conferir os pesos e escolher se a nota será emitida."""
+        config = impressao.carregar_config()
+        largura = impressao.LARGURAS[config["largura_mm"]]
+        previa = self.ticket.to_dict()
+        previa["data"] = momento.strftime("%d/%m/%Y %H:%M")
+        linhas = impressao.montar_linhas(previa, self.empresa, largura)
+
+        janela = tk.Toplevel(self.root)
+        janela.title("Confirmar pesagem")
+        janela.configure(bg=TEMA["fundo"])
+        janela.geometry("490x720")
+        janela.resizable(False, False)
+        janela.transient(self.root)
+        janela.grab_set()
+
+        container = tk.Frame(janela, bg=TEMA["fundo"])
+        container.pack(fill="both", expand=True, padx=24, pady=20)
+        tk.Label(
+            container, text="Confirmar pesagem", bg=TEMA["fundo"], fg=TEMA["texto"], font=(FONTE, 16, "bold")
+        ).pack(anchor="w")
+        tk.Label(
+            container, text="Confira os pesos antes de finalizar. Assim ficará a nota:",
+            bg=TEMA["fundo"], fg=TEMA["muted"], font=(FONTE, 9)
+        ).pack(anchor="w", pady=(2, 12))
+
+        cartao = CartaoArredondado(container, raio=16, padx=12, pady=10)
+        cartao.pack(fill="both", expand=True)
+        texto = tk.Text(
+            cartao.interior, width=largura, height=10, bg=TEMA["painel"], fg=TEMA["texto"],
+            font=(FONTE_MONO, 9), relief="flat", bd=0, highlightthickness=0, padx=4, pady=2,
+            wrap="none", cursor="arrow", takefocus=0
+        )
+        barra = ttk.Scrollbar(cartao.interior, orient="vertical", command=texto.yview)
+        texto.pack(side="left", fill="both", expand=True)
+
+        def atualizar_barra(inicio, fim):
+            barra.set(inicio, fim)
+            if float(inicio) <= 0.0 and float(fim) >= 1.0:
+                barra.pack_forget()  # a nota cabe inteira: esconde a barra
+            else:
+                barra.pack(side="right", fill="y", before=texto)
+
+        texto.configure(yscrollcommand=atualizar_barra)
+        texto.tag_configure("negrito", font=(FONTE_MONO, 9, "bold"))  # igual ao que sai no papel
+        for i, (linha, negrito) in enumerate(linhas):
+            texto.insert("end", linha + ("\n" if i < len(linhas) - 1 else ""), "negrito" if negrito else "")
+        texto.configure(state="disabled")
+
+        linha_total = tk.Frame(container, bg=TEMA["fundo"])
+        linha_total.pack(fill="x", pady=(14, 4))
+        tk.Label(linha_total, text="Total", bg=TEMA["fundo"], fg=TEMA["muted"], font=(FONTE, 10)).pack(side="left")
+        tk.Label(
+            linha_total, text=f"R$ {self.ticket.total:.2f}", bg=TEMA["fundo"], fg=TEMA["total"],
+            font=(FONTE_MONO, 20, "bold")
+        ).pack(side="right")
+
+        if config["impressora"]:
+            destino = f"A nota sai em: {config['impressora']} ({config['largura_mm']} mm)"
+        else:
+            destino = "Nenhuma impressora configurada: a nota será salva em arquivo."
+        tk.Label(
+            container, text=destino, bg=TEMA["fundo"], fg=TEMA["muted"], font=(FONTE, 8),
+            anchor="w", justify="left", wraplength=430
+        ).pack(fill="x")
+
+        botao_cheio(
+            container, "Confirmar e emitir nota", lambda: self._concluir_pesagem(janela, True, momento),
+            "documento", fundo_pai=TEMA["fundo"], pady=11, fonte=(FONTE, 11, "bold")
+        ).pack(fill="x", pady=(12, 6))
+        botao_contorno(
+            container, "Confirmar sem nota", lambda: self._concluir_pesagem(janela, False, momento),
+            "check", pady=10
+        ).pack(fill="x", pady=(0, 6))
+        botao_contorno(container, "Voltar e corrigir", janela.destroy).pack(fill="x")
+        janela.bind("<Escape>", lambda e: janela.destroy())
+
+    def _concluir_pesagem(self, janela, emitir, momento):
+        janela.destroy()
+        registro = self.historico.registrar(self.ticket, momento=momento)
         self.atualizar_historico()
         self._atualizar_painel_cliente()
-        messagebox.showinfo(
-            "Pesagem salva", f"Pesagem de R$ {registro['total']:.2f} salva no histórico."
-        )
+
+        mensagem = f"Pesagem de R$ {registro['total']:.2f} salva no histórico."
+        aviso = None
+        if emitir:
+            try:
+                mensagem += "\n\n" + impressao.emitir_nota(registro, self.empresa)
+            except impressao.ErroImpressao as erro:
+                aviso = (
+                    f"A pesagem foi salva no histórico, mas a nota não saiu:\n{erro}\n\n"
+                    "Você pode imprimir de novo na aba Histórico."
+                )
         self._resetar_pesagem()
+        if aviso:
+            messagebox.showwarning("Nota não impressa", aviso)
+        else:
+            messagebox.showinfo("Pesagem salva", mensagem)
+
+    def imprimir_nota_selecionada(self):
+        idx = self._indice_selecionado
+        if idx is None or idx >= len(self._registros_historico):
+            messagebox.showinfo("Imprimir nota", "Selecione uma pesagem na lista para imprimir a nota.")
+            return
+        try:
+            resultado = impressao.emitir_nota(self._registros_historico[idx], self.empresa)
+        except impressao.ErroImpressao as erro:
+            messagebox.showwarning("Nota não impressa", f"A nota não saiu:\n{erro}")
+        else:
+            messagebox.showinfo("Nota emitida", resultado)
+
+    def abrir_config_impressao(self):
+        config = impressao.carregar_config()
+        sem_impressora = "(Nenhuma — salvar a nota em arquivo)"
+        opcoes_largura = {"58 mm (32 colunas)": 58, "80 mm (48 colunas)": 80}
+        opcoes_acentos = {nome: chave for chave, (nome, _, _) in impressao.ACENTOS.items()}
+        opcoes_corte = {"Não cortar": False, "Cortar o papel ao final": True}
+
+        janela = tk.Toplevel(self.root)
+        janela.title("Impressão da nota")
+        janela.configure(bg=TEMA["fundo"])
+        janela.geometry("460x640")
+        janela.resizable(False, False)
+        janela.transient(self.root)
+        janela.grab_set()
+
+        container = tk.Frame(janela, bg=TEMA["fundo"])
+        container.pack(fill="both", expand=True, padx=24, pady=22)
+        tk.Label(
+            container, text="Impressão da nota", bg=TEMA["fundo"], fg=TEMA["texto"], font=(FONTE, 16, "bold")
+        ).pack(anchor="w")
+        tk.Label(
+            container, text="Escolha a impressora de cupom (térmica) e o tamanho do papel.",
+            bg=TEMA["fundo"], fg=TEMA["muted"], font=(FONTE, 9)
+        ).pack(anchor="w", pady=(2, 4))
+
+        def combo_em_cartao(valores, atual, somente_leitura=True):
+            cartao = CartaoArredondado(
+                container, raio=14, padx=10, pady=4, sombra=False, ajustar=True, borda=TEMA["linha"]
+            )
+            cartao.pack(fill="x")
+            combo = ttk.Combobox(
+                cartao.interior, values=valores, font=(FONTE, 10),
+                state="readonly" if somente_leitura else "normal"
+            )
+            combo.set(atual)
+            combo.pack(fill="x")
+            return combo
+
+        def rotulo(texto):
+            tk.Label(container, text=texto, bg=TEMA["fundo"], fg=TEMA["muted"], font=(FONTE, 9)).pack(
+                anchor="w", pady=(12, 4)
+            )
+
+        linha_impressora = tk.Frame(container, bg=TEMA["fundo"])
+        linha_impressora.pack(fill="x", pady=(12, 4))
+        tk.Label(
+            linha_impressora, text="Impressora", bg=TEMA["fundo"], fg=TEMA["muted"], font=(FONTE, 9)
+        ).pack(side="left")
+        status = tk.Label(
+            container, text="", bg=TEMA["fundo"], fg=TEMA["muted"], font=(FONTE, 9),
+            anchor="w", justify="left", wraplength=400
+        )
+        combo_impressora = combo_em_cartao(
+            [sem_impressora], config["impressora"] or sem_impressora, somente_leitura=False
+        )
+
+        def buscar():
+            status.configure(text="Buscando impressoras instaladas...", fg=TEMA["muted"])
+            janela.update_idletasks()
+            nomes = impressao.listar_impressoras()
+            combo_impressora["values"] = [sem_impressora] + nomes
+            if nomes:
+                status.configure(text=f"{len(nomes)} impressora(s) encontrada(s).", fg=TEMA["muted"])
+            else:
+                status.configure(
+                    text="Nenhuma impressora encontrada. Se ela estiver instalada, digite o nome "
+                         "exato dela no campo acima.", fg=TEMA["muted"]
+                )
+
+        botao_contorno(
+            linha_impressora, "Atualizar lista", buscar, icone="atualizar", pady=4, padx=10
+        ).pack(side="right")
+
+        rotulo("Largura do papel")
+        largura_atual = next(n for n, v in opcoes_largura.items() if v == config["largura_mm"])
+        combo_largura = combo_em_cartao(list(opcoes_largura), largura_atual)
+
+        rotulo("Acentos (caracteres)")
+        combo_acentos = combo_em_cartao(
+            list(opcoes_acentos), impressao.ACENTOS[config["acentos"]][0]
+        )
+
+        rotulo("Corte do papel")
+        combo_corte = combo_em_cartao(
+            list(opcoes_corte), "Cortar o papel ao final" if config["cortar"] else "Não cortar"
+        )
+
+        status.pack(fill="x", pady=(14, 0))
+
+        def ler_formulario():
+            escolhida = combo_impressora.get().strip()
+            return {
+                "impressora": "" if escolhida in ("", sem_impressora) else escolhida,
+                "largura_mm": opcoes_largura.get(combo_largura.get(), 58),
+                "acentos": opcoes_acentos.get(combo_acentos.get(), "cp850"),
+                "cortar": opcoes_corte.get(combo_corte.get(), False),
+            }
+
+        def imprimir_teste():
+            try:
+                resultado = impressao.emitir_teste(self.empresa, ler_formulario())
+            except impressao.ErroImpressao as erro:
+                status.configure(text=str(erro), fg=TEMA["erro"])
+            else:
+                status.configure(
+                    text=resultado + "\nConfira no papel se os acentos saíram certos.", fg=TEMA["total"]
+                )
+
+        def salvar():
+            impressao.salvar_config(ler_formulario())
+            janela.destroy()
+
+        botao_contorno(
+            container, "Imprimir teste", imprimir_teste, icone="impressora", pady=9
+        ).pack(fill="x", pady=(14, 6))
+        botao_cheio(
+            container, "Salvar", salvar, fundo_pai=TEMA["fundo"], pady=11, fonte=(FONTE, 11, "bold")
+        ).pack(fill="x", pady=(0, 6))
+        botao_contorno(container, "Cancelar", janela.destroy).pack(fill="x")
+
+        janela.after(150, buscar)
 
     def gerar_relatorio_atual(self):
         if self.ticket.esta_vazio():

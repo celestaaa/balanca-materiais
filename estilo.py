@@ -187,6 +187,10 @@ def desenhar_icone(canvas, nome, x, y, cor, tag="icone"):
         linha(6, 2, 2, 2, 2, 12, 6, 12)
         linha(5, 7, 12, 7)
         linha(9.5, 4, 12.5, 7, 9.5, 10)
+    elif nome == "impressora":
+        linha(4, 5, 4, 1.5, 10, 1.5, 10, 5)
+        linha(2, 5, 12, 5, 12, 10.5, 2, 10.5, 2, 5)
+        linha(4, 8.5, 10, 8.5, 10, 12.5, 4, 12.5, 4, 8.5)
     elif nome == "tema":
         canvas.create_oval(x + 1.5, y + 1.5, x + 12.5, y + 12.5, outline=cor, width=1.6, tags=tag)
         canvas.create_arc(

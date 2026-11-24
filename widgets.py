@@ -342,10 +342,13 @@ class EntradaArredondada(tk.Canvas):
 
 
 class CabecalhoDegrade(tk.Canvas):
-    """Faixa de topo com degradê azul, cantos arredondados, título, subtítulo e botão "Sair"."""
+    """Faixa de topo com degradê azul, cantos arredondados, título, subtítulo e botões à direita.
 
-    def __init__(self, master, titulo, subtitulo="", ao_sair=None, fundo_pai=None,
-                 altura=80, raio=22, ao_tema=None, texto_tema=""):
+    botoes: lista de (texto, icone, comando), do botão mais à DIREITA para o mais à esquerda.
+    """
+
+    def __init__(self, master, titulo, subtitulo="", botoes=None, fundo_pai=None,
+                 altura=80, raio=22):
         super().__init__(
             master, bg=fundo_pai or TEMA["fundo"], highlightthickness=0, bd=0, height=altura
         )
@@ -354,29 +357,18 @@ class CabecalhoDegrade(tk.Canvas):
         self._altura = altura
         self._raio = raio
         self._pendente = None
-        self._botao = None
-        self._janela_botao = None
-        self._botao_tema = None
-        self._janela_tema = None
+        self._botoes = []  # pares (botão, item de janela no canvas)
 
-        if ao_sair:
+        for texto, icone, comando in (botoes or []):
             cor_local = TEMA["cabecalho_fim"]
-            self._botao = BotaoArredondado(
-                self, text="Sair", command=ao_sair, bg=cor_local, fg="#FFFFFF",
+            botao = BotaoArredondado(
+                self, text=texto, command=comando, bg=cor_local, fg="#FFFFFF",
                 fundo_pai=cor_local, borda=misturar(cor_local, "#FFFFFF", 0.75), raio=999,
-                font=(FONTE, 9, "bold"), icone="sair", padx=16, pady=7,
+                font=(FONTE, 9, "bold"), icone=icone, padx=16, pady=7,
                 hover=misturar(cor_local, "#FFFFFF", 0.18)
             )
-            self._janela_botao = self.create_window(0, 0, window=self._botao, anchor="e")
-        if ao_tema:
-            cor_local = TEMA["cabecalho_fim"]
-            self._botao_tema = BotaoArredondado(
-                self, text=texto_tema, command=ao_tema, bg=cor_local, fg="#FFFFFF",
-                fundo_pai=cor_local, borda=misturar(cor_local, "#FFFFFF", 0.75), raio=999,
-                font=(FONTE, 9, "bold"), icone="tema", padx=16, pady=7,
-                hover=misturar(cor_local, "#FFFFFF", 0.18)
-            )
-            self._janela_tema = self.create_window(0, 0, window=self._botao_tema, anchor="e")
+            janela = self.create_window(0, 0, window=botao, anchor="e")
+            self._botoes.append((botao, janela))
         self.bind("<Configure>", self._agendar)
 
     def _agendar(self, _evento=None):
@@ -417,12 +409,11 @@ class CabecalhoDegrade(tk.Canvas):
                 28, meio + 14, text=self._subtitulo, anchor="w",
                 font=(FONTE, 9), fill=TEMA["cabecalho_sub"], tags="texto"
             )
+
         # Botões da direita: cada um recebe a cor do degradê na posição onde está,
         # para não aparecer uma "caixinha" de cor diferente atrás dele.
         direita = largura - 24
-        for botao, janela in ((self._botao, self._janela_botao), (self._botao_tema, self._janela_tema)):
-            if botao is None:
-                continue
+        for botao, janela in self._botoes:
             self.coords(janela, direita, meio)
             centro = direita - botao._largura_req / 2
             cor = misturar(

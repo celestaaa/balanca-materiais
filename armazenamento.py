@@ -36,9 +36,9 @@ class GerenciadorHistorico:
         with open(ARQUIVO_HISTORICO, "w", encoding="utf-8") as f:
             json.dump(self.registros, f, ensure_ascii=False, indent=2)
 
-    def registrar(self, ticket: Ticket) -> dict:
+    def registrar(self, ticket: Ticket, momento=None) -> dict:
         registro = ticket.to_dict()
-        registro["data"] = datetime.now().strftime("%d/%m/%Y %H:%M")
+        registro["data"] = (momento or datetime.now()).strftime("%d/%m/%Y %H:%M")
         self.registros.insert(0, registro)
         self._salvar()
         return registro
